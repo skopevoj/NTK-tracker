@@ -5,9 +5,9 @@ async function fillDatabase() {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7);
 
-    console.log("Filling database with realistic data for the last week...");
+    console.log("Filling database with realistic and random data for the last week...");
 
-    const dataToInsert = []; 
+    const dataToInsert = [];
 
     for (let day = 0; day < 7; day++) {
         const currentDay = new Date(oneWeekAgo);
@@ -19,17 +19,21 @@ async function fillDatabase() {
                 timestamp.setHours(hour, minute, 0, 0);
 
                 let peopleCount = 0;
+
                 if (hour >= 6 && hour < 12) {
                     const progress = (hour - 6) * 60 + minute;
-                    peopleCount = Math.round(100 + Math.sin((progress / 360) * Math.PI) * 200);
+                    const base = 100 + Math.sin((progress / 360) * Math.PI) * 200;
+                    peopleCount = Math.round(base + Math.random() * 20 - 10);
                 } else if (hour >= 12 && hour < 18) {
-                    peopleCount = Math.round(150 + Math.random() * 50);
+                    peopleCount = Math.round(150 + Math.random() * 100 - 50); 
                 } else if (hour >= 18 && hour < 24) {
- 
-                    const progress = (hour - 18) * 60 + minute; 
-                    peopleCount = Math.round(150 - Math.sin((progress / 360) * Math.PI) * 150);
+                    const progress = (hour - 18) * 60 + minute;
+                    const base = 150 - Math.sin((progress / 360) * Math.PI) * 150;
+                    peopleCount = Math.round(base + Math.random() * 20 - 10); 
+                } else {
+                    peopleCount = Math.round(Math.random() * 5);
                 }
-
+                peopleCount = Math.max(0, peopleCount);
 
                 dataToInsert.push([peopleCount, timestamp]);
             }
@@ -45,7 +49,7 @@ async function fillDatabase() {
             `INSERT INTO occupancy_log (people_count, timestamp) VALUES ${values}`,
             flattenedData
         );
-        console.log("Database has been filled with realistic data for the last week.");
+        console.log("Database has been filled with realistic and random data for the last week.");
     } catch (error) {
         console.error("Failed to insert data:", error.message);
     } finally {
