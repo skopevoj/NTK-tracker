@@ -39,7 +39,7 @@ async function dailyAverage(date) {
                 AVG(people_count) AS average_count
              FROM occupancy_log
              WHERE DATE(timestamp) = $1
-               AND EXTRACT(HOUR FROM timestamp) BETWEEN 6 AND 11
+               AND EXTRACT(HOUR FROM timestamp) BETWEEN 6 AND 24
              GROUP BY interval_start
              ORDER BY interval_start`,
             [date]
