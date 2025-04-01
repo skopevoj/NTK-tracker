@@ -6,14 +6,17 @@ const express= require('express');
 const app = express();
 require('dotenv').config();
 
-app.use("/graphql", graphqlHTTP({
+const router = express.Router();
+
+app.use("/api", router);
+
+router.post("/graphql", graphqlHTTP({
     schema,
     rootValue: {
       occupancyHistory: async ({ limit }) => await getOccupancyHistory(limit || 50),
     },
     graphiql: true,
 }));
-
 
 (async () => {
     const occupancy = 500; //await scrapeLibraryOccupancy();
