@@ -1,5 +1,6 @@
 import './App.css'
 import axios from 'axios';
+import * as recharts from 'recharts';
 import { useState, useEffect } from 'react';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
     })
       .then(response => {
         setData(response.data);
+        console.log('API Response:', response.data);
       })
       .catch(error => {
         console.error('Error fetching data:', error);
@@ -28,6 +30,25 @@ function App() {
   return (
     <>
       <p>{data ? JSON.stringify(data) : 'Loading...'}</p>
+
+      {data && data.data && data.data.occupancyHistory && (
+        <recharts.LineChart
+          width={500}
+          height={300}
+          data={data.data.occupancyHistory.map(item => ({
+                timestamp: new Date(item.timestamp).toLocaleTimeString('cs-CZ', { timeZone: 'Europe/Prague' }),
+                people_count: item.people_count
+                }))}>
+                  
+          <recharts.Line type="monotone" dataKey="people_count" stroke="#8884d8" />
+          <recharts.CartesianGrid stroke="#ccc" />
+          <recharts.XAxis dataKey="timestamp" />
+          <recharts.YAxis />
+        </recharts.LineChart>
+
+        
+      )}
+
     </>
   );
 }
