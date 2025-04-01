@@ -8,9 +8,18 @@ const schema = buildSchema(`
     people_count: Int
   }
 
+  type IntervalAverage {
+    interval_start: String
+    average_count: Float
+  }
+
   type Query {
     occupancyHistory(limit: Int): [Occupancy]
+    dailyAverage(date: String!): [IntervalAverage]
   }
+
+
 `);
+
 
 module.exports = schema;
