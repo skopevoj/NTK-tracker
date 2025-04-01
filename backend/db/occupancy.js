@@ -22,7 +22,7 @@ async function getOccupancyHistory(limit = 50) {
         );
         return result.rows.map(row => ({
             ...row,
-            timestamp: new Date(row.timestamp).toISOString(), // Convert to ISO 8601
+            timestamp: new Date(row.timestamp).toISOString(),
         }));
     } catch (error) {
         console.error("Failed to fetch occupancy history:", error.message);
@@ -30,9 +30,30 @@ async function getOccupancyHistory(limit = 50) {
     }
 }
 
-insertOccupancy(650);
+async function dailyAverage(date) {
+    try {
+        const result = await db.query(
+            `SELECT 
+                DATE_TRUNC('minute', timestamp) + 
+                (FLOOR(EXTRACT(MINUTE FROM timestamp) / 10) * INTERVAL '10 minutes') AS interval_start,
+                AVG(people_count) AS average_count
+             FROM occupancy_log
+             WHERE DATE(timestamp) = $1
+               AND EXTRACT(HOUR FROM timestamp) BETWEEN 6 AND 11
+             GROUP BY interval_start
+             ORDER BY interval_start`,
+            [date]
+        );
+        return result.rows;
+    } catch (error) {
+        console.error("Failed to fetch daily average:", error.message);
+        return [];
+    }
+}
+
 
 module.exports = {
  insertOccupancy,
- getOccupancyHistory
+ getOccupancyHistory,
+ dailyAverage
 }
