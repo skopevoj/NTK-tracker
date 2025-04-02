@@ -34,10 +34,10 @@ async function weeklyAverage(startDate, endDate) {
     try {
         const result = await db.query(
             `SELECT 
-                DATE_TRUNC('hour', timestamp) AS interval_start,
-                CEIL(AVG(people_count))::INTEGER AS average_count
+                (DATE_TRUNC('hour', timestamp AT TIME ZONE 'UTC')) AT TIME ZONE 'Europe/Prague' AS interval_start,
+                AVG(people_count) AS average_count
              FROM occupancy_log
-             WHERE DATE(timestamp) BETWEEN $1 AND $2
+             WHERE DATE(timestamp AT TIME ZONE 'UTC') BETWEEN $1 AND $2
              GROUP BY interval_start
              ORDER BY interval_start`,
             [startDate, endDate]
@@ -71,20 +71,16 @@ async function monthlyAverage(month) {
 async function dailyAverage(date) {
     try {
         const result = await db.query(
-            `SELECT 
-                DATE_TRUNC('minute', timestamp) + 
-                (FLOOR(EXTRACT(MINUTE FROM timestamp) / 10) * INTERVAL '10 minutes') AS interval_start,
-                CEIL(AVG(people_count))::INTEGER AS average_count
+            `SELECT timestamp AS interval_start, people_count AS average_count
              FROM occupancy_log
-             WHERE DATE(timestamp) = $1
-               AND EXTRACT(HOUR FROM timestamp) BETWEEN 6 AND 24
-             GROUP BY interval_start
-             ORDER BY interval_start`,
+             WHERE timestamp >= $1::DATE 
+               AND timestamp < ($1::DATE + INTERVAL '1 day')
+             ORDER BY timestamp`,
             [date]
         );
         return result.rows;
     } catch (error) {
-        console.error("Failed to fetch daily average:", error.message);
+        console.error("Failed to fetch daily records:", error.message);
         return [];
     }
 }
