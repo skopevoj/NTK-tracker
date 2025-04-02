@@ -1,41 +1,33 @@
 const db = require('./client');
 
+const START_HOUR = 9;
+const END_HOUR = 11;
 async function fillDatabase() {
     const now = new Date();
-    const oneWeekAgo = new Date();
+    const oneWeekAgo = new Date(now);
     oneWeekAgo.setDate(now.getDate() - 7);
-
-    console.log("Filling database with realistic and random data for the last week...");
-
+    
+    console.log("Filling database with constant data for the last week between 09:00 and 11:00 (UTC).");
+    
     const dataToInsert = [];
-
+    
     for (let day = 0; day < 7; day++) {
+        let index=0;
         const currentDay = new Date(oneWeekAgo);
         currentDay.setDate(oneWeekAgo.getDate() + day);
+        console.log(`Current day: ${currentDay.toISOString().slice(0, 10)}`);
 
-        for (let hour = 0; hour < 24; hour++) {
-            for (let minute = 0; minute < 60; minute += 10) {
-                const timestamp = new Date(currentDay);
-                timestamp.setHours(hour, minute, 0, 0);
+        const year = currentDay.getFullYear();
+        const month = currentDay.getMonth();
+        const date = currentDay.getDate();
 
-                let peopleCount = 0;
-
-                if (hour >= 6 && hour < 12) {
-                    const progress = (hour - 6) * 60 + minute;
-                    const base = 100 + Math.sin((progress / 360) * Math.PI) * 200;
-                    peopleCount = Math.round(base + Math.random() * 20 - 10);
-                } else if (hour >= 12 && hour < 18) {
-                    peopleCount = Math.round(150 + Math.random() * 100 - 50);
-                } else if (hour >= 18 && hour < 24) {
-                    const progress = (hour - 18) * 60 + minute;
-                    const base = 150 - Math.sin((progress / 360) * Math.PI) * 150;
-                    peopleCount = Math.round(base + Math.random() * 20 - 10);
-                } else {
-                    peopleCount = Math.round(Math.random() * 5);
-                }
-                peopleCount = Math.max(0, Math.round(peopleCount)); // Ensure non-negative and rounded
-
-                dataToInsert.push([peopleCount, timestamp]);
+        for (let hour = START_HOUR; hour < END_HOUR; hour++) {
+            for (let minute = 0; minute < 60; minute += 1) {
+                const timestamp = new Date(Date.UTC(year, month, date, hour, minute, 0, 0));
+                // const peopleCount = 50;
+                index++;
+                dataToInsert.push([index, timestamp.toISOString()]);
+                console.log(`People count: ${index}, Time: ${timestamp.toISOString().slice(11, 16)}`);
             }
         }
     }
@@ -49,7 +41,7 @@ async function fillDatabase() {
             `INSERT INTO occupancy_log (people_count, timestamp) VALUES ${values}`,
             flattenedData
         );
-        console.log("Database has been filled with realistic and random data for the last week.");
+        console.log("Database has been filled with constant data for the last week between 09:00 and 11:00 (UTC).");
     } catch (error) {
         console.error("Failed to insert data:", error.message);
     } finally {
