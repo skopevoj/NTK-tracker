@@ -27,4 +27,3 @@ try {
 }
 }
 module.exports = scrapeLibraryOccupancy;
-// scrapeLibraryOccupancy();
