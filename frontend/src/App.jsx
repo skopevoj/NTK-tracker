@@ -2,36 +2,37 @@ import './App.css';
 import axios from 'axios';
 import * as recharts from 'recharts';
 import { useState, useEffect } from 'react';
-
+import DataView from './components/DataView.jsx'
 function App() {
   const [data, setData] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); 
 
-  useEffect(() => {
-    if (!selectedDate) return;
+  // useEffect(() => {
+  //   if (!selectedDate) return;
 
-    axios.post('/api/graphql', {
-      query: `
-        query {
-          dailyAverage(date: "${selectedDate}") {
-            interval_start
-            average_count
-          }
-        }
-      `
-    })
-      .then(response => {
-        setData(response.data);
-        console.log('API Response:', response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching data:', error);
-      });
-  }, [selectedDate]);
+  //   axios.post('/api/graphql', {
+  //     query: `
+  //       query {
+  //         dailyAverage(date: "${selectedDate}") {
+  //           interval_start
+  //           average_count
+  //         }
+  //       }
+  //     `
+  //   })
+  //     .then(response => {
+  //       setData(response.data);
+  //       console.log('API Response:', response.data);
+  //     })
+  //     .catch(error => {
+  //       console.error('Error fetching data:', error);
+  //     });
+  // }, [selectedDate]);
 
   return (
     <>
-      <div>
+    <DataView/>
+      {/* <div>
         <label htmlFor="date-selector">Select Date: </label>
         <input
           id="date-selector"
@@ -59,7 +60,7 @@ function App() {
       )}
 
       {!data && <p>Loading...</p>}
-      {data && data.data && data.data.dailyAverage.length === 0 && <p>No data available for the selected date.</p>}
+      {data && data.data && data.data.dailyAverage.length === 0 && <p>No data available for the selected date.</p>} */}
     </>
   );
 }
