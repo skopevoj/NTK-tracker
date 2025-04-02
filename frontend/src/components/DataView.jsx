@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import * as recharts from 'recharts';
 import axios from 'axios';
+import DateSelector from './DateSelector';
+import Chart from './Chart';
 
 export default function DataView() {
   const [view, setView] = useState('day');
@@ -9,7 +10,6 @@ export default function DataView() {
   const [endDate, setEndDate] = useState(null);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [data, setData] = useState(null);
-
 
   useEffect(() => {
     let query = '';
@@ -60,13 +60,17 @@ export default function DataView() {
     }
   }, [view, selectedDate, startDate, endDate, month]);
 
-
   const formatTimestamp = (timestamp) => {
     const date = new Date(parseInt(timestamp, 10));
     if (view === 'day') {
       return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
     } else if (view === 'week') {
-      return date.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleDateString('cs-CZ', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     } else if (view === 'month') {
       return date.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
     }
@@ -84,71 +88,31 @@ export default function DataView() {
         </select>
       </div>
 
-      <div>
-        {view === 'day' && (
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
-        )}
-        {view === 'week' && (
-          <>
-            <input
-              type="date"
-              value={startDate || ''}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder="Start Date"
-            />
-            <input
-              type="date"
-              value={endDate || ''}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="End Date"
-            />
-          </>
-        )}
-        {view === 'month' && (
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
-        )}
-      </div>
+      <DateSelector
+        view={view}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        month={month}
+        setMonth={setMonth}
+      />
 
       <div>
-        {data && data[view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage'] && (
-          <recharts.LineChart
-            width={500}
-            height={300}
-            data={
-              (data?.[view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage'] || []).map(
-                (item) => ({
-                  timestamp: formatTimestamp(item.interval_start),
-                  average_count: item.average_count,
-                })
-              )
-            }
-          >
-            <recharts.Line type="monotone" dataKey="average_count" stroke="#8884d8" />
-            <recharts.CartesianGrid stroke="#ccc" />
-            <recharts.XAxis dataKey="timestamp" />
-            <recharts.YAxis />
-            <recharts.Tooltip
-              formatter={(value, name) => {
-                if (name === 'average_count') {
-                  return ['people', `${value}`];
-                }
-                return [value, name];
-              }}
-            />
-          </recharts.LineChart>
-        )}
-        {!data && <p>Loading...</p>}
-        {data && data[view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage']?.length === 0 && (
+        {data &&
+        data[
+          view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage'
+        ] ? (
+          <Chart view={view} data={data} formatTimestamp={formatTimestamp} />
+        ) : !data ? (
+          <p>Loading...</p>
+        ) : data[
+            view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage'
+          ]?.length === 0 ? (
           <p>No data available for the selected {view}.</p>
-        )}
+        ) : null}
       </div>
     </>
   );
