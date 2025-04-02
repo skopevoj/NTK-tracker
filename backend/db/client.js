@@ -14,5 +14,15 @@ catch (error){
     console.error('Error with connecting to database, ' + error);
 }
 
+async function showDatabaseTimezone() {
+    try {
+        const result = await db.query(`SHOW timezone;`);
+        console.log("Database Timezone:", result.rows[0].TimeZone || result.rows[0].timezone);
+    } catch (error) {
+        console.error("Failed to fetch database timezone:", error.message);
+    }
+}
+
+
 
 module.exports = client;
