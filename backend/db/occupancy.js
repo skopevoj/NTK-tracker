@@ -73,7 +73,7 @@ async function dailyAverage(date) {
         const result = await db.query(
             `SELECT timestamp AS interval_start, people_count AS average_count
              FROM occupancy_log
-             WHERE timestamp >= $1::DATE 
+             WHERE timestamp >= $1::DATE  + INTERVAL '6 hours'
                AND timestamp < ($1::DATE + INTERVAL '1 day')
              ORDER BY timestamp`,
             [date]
@@ -86,10 +86,67 @@ async function dailyAverage(date) {
 }
 
 
-module.exports = {
- insertOccupancy,
- getOccupancyHistory,
- dailyAverage,
- monthlyAverage,
- weeklyAverage
+async function predictDailyRest(date) {
+    const actualData = await dailyAverage(date);
+    if (actualData.length === 0) {
+        return [];
+    }
+
+    const actualPoints = actualData
+      .map(item => ({
+          time: new Date(item.interval_start),
+          value: parseFloat(item.average_count)
+      }))
+      .sort((a, b) => a.time - b.time);
+
+    const dayStart = new Date(date + "T06:00:00");  
+    const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
+    const now = new Date();
+
+    if (now >= dayEnd) {
+        return [];
+    }
+
+    const lastActualTime = actualPoints[actualPoints.length - 1].time;
+    const predStartTime = now > lastActualTime ? now : lastActualTime;
+
+    let slope = 0;
+    if (actualPoints.length >= 2) {
+        const p1 = actualPoints[actualPoints.length - 2];
+        const p2 = actualPoints[actualPoints.length - 1];
+        const deltaTime = (p2.time - p1.time) / (3600 * 1000);
+        if (deltaTime !== 0) {
+            slope = (p2.value - p1.value) / deltaTime;
+        }
+    } else {
+        slope = 0;
+    }
+
+
+    const predictedPoints = [];
+
+    let predictionTime = new Date(Math.ceil(predStartTime.getTime() / (3600 * 1000)) * 3600 * 1000);
+    const initialValue = actualPoints[actualPoints.length - 1].value;
+
+    while (predictionTime < dayEnd) {
+        const hoursDiff = (predictionTime - predStartTime) / (3600 * 1000);
+        const predictedValue = initialValue + slope * hoursDiff;
+        predictedPoints.push({
+            interval_start: predictionTime.toISOString(),
+            average_count: Math.round(predictedValue)
+        });
+        predictionTime = new Date(predictionTime.getTime() + 3600 * 1000);
+    }
+
+    return predictedPoints;
 }
+
+module.exports = {
+    insertOccupancy,
+    getOccupancyHistory,
+    dailyAverage,
+    monthlyAverage,
+    weeklyAverage,
+    predictDailyRest
+};
+
