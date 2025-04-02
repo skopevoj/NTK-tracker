@@ -35,7 +35,7 @@ async function weeklyAverage(startDate, endDate) {
         const result = await db.query(
             `SELECT 
                 DATE_TRUNC('hour', timestamp) AS interval_start,
-                AVG(people_count) AS average_count
+                CEIL(AVG(people_count))::INTEGER AS average_count
              FROM occupancy_log
              WHERE DATE(timestamp) BETWEEN $1 AND $2
              GROUP BY interval_start
@@ -54,7 +54,7 @@ async function monthlyAverage(month) {
         const result = await db.query(
             `SELECT 
                 DATE_TRUNC('day', timestamp) AS interval_start,
-                AVG(people_count) AS average_count
+                CEIL(AVG(people_count))::INTEGER AS average_count
              FROM occupancy_log
              WHERE TO_CHAR(timestamp, 'YYYY-MM') = $1
              GROUP BY interval_start
@@ -74,7 +74,7 @@ async function dailyAverage(date) {
             `SELECT 
                 DATE_TRUNC('minute', timestamp) + 
                 (FLOOR(EXTRACT(MINUTE FROM timestamp) / 10) * INTERVAL '10 minutes') AS interval_start,
-                AVG(people_count) AS average_count
+                CEIL(AVG(people_count))::INTEGER AS average_count
              FROM occupancy_log
              WHERE DATE(timestamp) = $1
                AND EXTRACT(HOUR FROM timestamp) BETWEEN 6 AND 24

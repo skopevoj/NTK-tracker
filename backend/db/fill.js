@@ -25,15 +25,15 @@ async function fillDatabase() {
                     const base = 100 + Math.sin((progress / 360) * Math.PI) * 200;
                     peopleCount = Math.round(base + Math.random() * 20 - 10);
                 } else if (hour >= 12 && hour < 18) {
-                    peopleCount = Math.round(150 + Math.random() * 100 - 50); 
+                    peopleCount = Math.round(150 + Math.random() * 100 - 50);
                 } else if (hour >= 18 && hour < 24) {
                     const progress = (hour - 18) * 60 + minute;
                     const base = 150 - Math.sin((progress / 360) * Math.PI) * 150;
-                    peopleCount = Math.round(base + Math.random() * 20 - 10); 
+                    peopleCount = Math.round(base + Math.random() * 20 - 10);
                 } else {
                     peopleCount = Math.round(Math.random() * 5);
                 }
-                peopleCount = Math.max(0, peopleCount);
+                peopleCount = Math.max(0, Math.round(peopleCount)); // Ensure non-negative and rounded
 
                 dataToInsert.push([peopleCount, timestamp]);
             }
