@@ -135,7 +135,14 @@ export default function DataView() {
             <recharts.CartesianGrid stroke="#ccc" />
             <recharts.XAxis dataKey="timestamp" />
             <recharts.YAxis />
-            <recharts.Tooltip />
+            <recharts.Tooltip
+              formatter={(value, name) => {
+                if (name === 'average_count') {
+                  return ['people', `${value}`];
+                }
+                return [value, name];
+              }}
+            />
           </recharts.LineChart>
         )}
         {!data && <p>Loading...</p>}
