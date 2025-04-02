@@ -1,7 +1,7 @@
 const db = require('./client');
 
-const START_HOUR = 9;
-const END_HOUR = 11;
+const START_HOUR = 0;
+const END_HOUR = 24;
 async function fillDatabase() {
     const now = new Date();
     const oneWeekAgo = new Date(now);
@@ -22,7 +22,7 @@ async function fillDatabase() {
         const date = currentDay.getDate();
 
         for (let hour = START_HOUR; hour < END_HOUR; hour++) {
-            for (let minute = 0; minute < 60; minute += 1) {
+            for (let minute = 0; minute < 60; minute += 5) {
                 const timestamp = new Date(Date.UTC(year, month, date, hour, minute, 0, 0));
                 // const peopleCount = 50;
                 index++;
