@@ -70,7 +70,8 @@ export default function Chart({ view, data, formatTimestamp, startDate }) {
             stroke="#8884d8"
             dot={false}
           />
-          <recharts.XAxis dataKey="timestamp" tickFormatter={weekTickFormatter} />
+
+          <recharts.XAxis dataKey="timestamp" tickFormatter={weekTickFormatter} domain={['10:00', '11:00']} />
           <recharts.YAxis />
           <recharts.Tooltip
             formatter={(value, name) => {
