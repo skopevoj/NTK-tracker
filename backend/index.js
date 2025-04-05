@@ -1,6 +1,6 @@
 const scrapeLibraryOccupancy = require('./scrape/scrapeNTK');
 const { graphqlHTTP } = require("express-graphql");
-const { getOccupancyHistory, insertOccupancy, dailyAverage, weeklyAverage, monthlyAverage } = require("./db/occupancy");
+const { getOccupancyHistory, insertOccupancy, dailyAverage, weeklyAverage, monthlyAverage, highestOccupancy, currentOccupancy } = require("./db/occupancy");
 const schema = require("./graphql/schema");
 const express= require('express');
 const path = require('path');
@@ -19,6 +19,8 @@ router.post("/graphql", graphqlHTTP({
         dailyAverage: async ({ date }) => await dailyAverage(date),
         weeklyAverage: async ({ startDate, endDate }) => await weeklyAverage(startDate, endDate),
         monthlyAverage: async ({ month }) => await monthlyAverage(month),
+        highestOccupancy: async () => await highestOccupancy(),
+        currentOccupancy: async () => await currentOccupancy(),
     },
     graphiql: true,
 }));
