@@ -1,6 +1,5 @@
 const { buildSchema } = require("graphql");
 
-// This defines the GraphQL types and available queries
 const schema = buildSchema(`
   type Occupancy {
     id: Int
@@ -21,8 +20,6 @@ const schema = buildSchema(`
     highestOccupancy: Occupancy
     currentOccupancy: Occupancy
   }
-
-
 `);
 
 
