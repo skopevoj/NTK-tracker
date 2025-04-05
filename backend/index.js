@@ -1,6 +1,6 @@
 const scrapeLibraryOccupancy = require('./scrape/scrapeNTK');
 const { graphqlHTTP } = require("express-graphql");
-const { getOccupancyHistory, insertOccupancy, dailyAverage, weeklyAverage, monthlyAverage, highestOccupancy, currentOccupancy } = require("./db/occupancy");
+const { getOccupancyHistory, insertOccupancy, dailyAverage, highestOccupancy, currentOccupancy } = require("./db/occupancy");
 const schema = require("./graphql/schema");
 const express= require('express');
 const path = require('path');
