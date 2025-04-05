@@ -4,17 +4,16 @@ import DateSelector from './DateSelector';
 import Chart from './Chart';
 
 export default function DataView() {
-  const [view, setView] = useState('day');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [data, setData] = useState(null);
+  const [highest, setHighest] = useState({ people_count: 0, timestamp: null });
+  const [current, setCurrent] = useState({ people_count: 0, timestamp: null });
 
   useEffect(() => {
-    let query = '';
-    if (view === 'day') {
-      query = `
+    let query = `
         query {
           dailyAverage(date: "${selectedDate}") {
             interval_start
@@ -22,27 +21,7 @@ export default function DataView() {
           }
         }
       `;
-    } else if (view === 'week' && startDate && endDate) {
-      query = `
-        query {
-          weeklyAverage(startDate: "${startDate}", endDate: "${endDate}") {
-            interval_start
-            average_count
-          }
-        }
-      `;
-    } else if (view === 'month') {
-      query = `
-        query {
-          monthlyAverage(month: "${month}") {
-            interval_start
-            average_count
-          }
-        }
-      `;
-    }
 
-    if (query) {
       axios
         .post('/api/graphql', { query })
         .then((response) => {
@@ -57,39 +36,69 @@ export default function DataView() {
           console.error('Error fetching data:', error);
           setData(null);
         });
-    }
-  }, [view, selectedDate, startDate, endDate, month]);
+  }, [selectedDate, startDate, endDate, month]);
+
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
+      try {
+        const query = `
+          query {
+            highestOccupancy {
+              people_count
+              timestamp
+            }
+            currentOccupancy {
+              people_count
+              timestamp
+            }
+          }
+        `;
+
+        const response = await axios.post('/api/graphql', { query });
+        if (response.data && response.data.data) {
+          setHighest(response.data.data.highestOccupancy);
+          setCurrent(response.data.data.currentOccupancy);
+        } else {
+          console.error('Unexpected API response:', response);
+        }
+      } catch (error) {
+        console.error('Error fetching additional data:', error);
+      }
+    };
+
+    fetchAdditionalData();
+  }, []);
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(parseInt(timestamp, 10));
-    if (view === 'day') {
-      return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
-    } else if (view === 'week') {
-      return date.toLocaleDateString('cs-CZ', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } else if (view === 'month') {
-      return date.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' });
-    }
-    return '';
+    return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <>
-      <div>DataView</div>
+      <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '20px'}}>
+        <div className='card'>
+          <h3>{highest.people_count}</h3>
+          <p>Highest Occupancy on {new Date(highest.timestamp).toLocaleDateString('cs-CZ')}</p>
+        </div>
+        <div className='card'>
+          <h3>{current.people_count}</h3>
+          <p>Current Occupancy on {new Date(current.timestamp).toLocaleDateString('cs-CZ')}</p>
+        </div>
+      </div>
+      
+
       <div>
-        <select value={view} onChange={(e) => setView(e.target.value)}>
-          <option value="day">Day</option>
-          <option value="week">Week</option>
-          <option value="month">Month</option>
-        </select>
+        {data && data.dailyAverage ? (
+          <Chart data={data} startDate={startDate} formatTimestamp={formatTimestamp} selectedDate={selectedDate} />
+        ) : !data ? (
+          <p>Loading...</p>
+        ) : data.dailyAverage?.length === 0 ? (
+          <p>No data available for the selected day.</p>
+        ) : null}
       </div>
 
       <DateSelector
-        view={view}
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
         startDate={startDate}
@@ -99,21 +108,6 @@ export default function DataView() {
         month={month}
         setMonth={setMonth}
       />
-
-      <div>
-        {data &&
-        data[
-          view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage'
-        ] ? (
-          <Chart view={view} data={data} formatTimestamp={formatTimestamp} />
-        ) : !data ? (
-          <p>Loading...</p>
-        ) : data[
-            view === 'day' ? 'dailyAverage' : view === 'week' ? 'weeklyAverage' : 'monthlyAverage'
-          ]?.length === 0 ? (
-          <p>No data available for the selected {view}.</p>
-        ) : null}
-      </div>
     </>
   );
 }
