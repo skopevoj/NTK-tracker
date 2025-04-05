@@ -34,9 +34,9 @@
 }
 
 .card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  padding: 1em;
+  margin: 1.5em auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  background-color: #fff;
 }
