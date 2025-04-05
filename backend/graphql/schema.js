@@ -13,13 +13,13 @@ const schema = buildSchema(`
     average_count: Float
   }
 
-  
-
   type Query {
     occupancyHistory(limit: Int): [Occupancy]
     dailyAverage(date: String!): [IntervalAverage]
     weeklyAverage(startDate: String!, endDate: String!): [IntervalAverage]
     monthlyAverage(month: String!): [IntervalAverage]
+    highestOccupancy: Occupancy
+    currentOccupancy: Occupancy
   }
 
 
