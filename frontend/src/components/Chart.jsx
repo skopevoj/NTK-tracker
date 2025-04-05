@@ -1,17 +1,11 @@
 import React from 'react';
 import * as recharts from 'recharts';
 
-export default function Chart({ view, data, formatTimestamp, startDate }) {
+export default function Chart({ data, formatTimestamp, startDate }) {
     const getData = () => {
-        const key =
-          view === 'day'
-            ? 'dailyAverage'
-            : view === 'week'
-            ? 'weeklyAverage'
-            : 'monthlyAverage';
-        let rawData = data?.[key] || [];
-    
-        if (view === 'week' && startDate) {
+        let rawData = data?.dailyAverage || [];
+
+        if (startDate) {
           // Generate a complete week (7 days) starting from the given startDate.
           const weekData = [];
           const start = new Date(startDate); // expected format "YYYY-MM-DD"
@@ -42,45 +36,32 @@ export default function Chart({ view, data, formatTimestamp, startDate }) {
           }));
         }
       };
-    
-      const chartData = getData();
-    
-      // Always use a tick formatter for week view to control label display.
-      const weekTickFormatter =
-        view === 'week' && chartData.length > 0
-          ? (() => {
-              let lastDate = null;
-              return (value) => {
-                const datePart = value.split(' ')[0];
-                let result = '';
-                if (datePart !== lastDate) {
-                  result = datePart;
-                  lastDate = datePart;
-                }
-                return result;
-              };
-            })()
-          : undefined;
-    
-      return (
-        <recharts.LineChart width={500} height={300} data={chartData}>
-          <recharts.Line
-            type="monotone"
-            dataKey="average_count"
-            stroke="#8884d8"
-            dot={false}
-          />
 
-          <recharts.XAxis dataKey="timestamp" tickFormatter={weekTickFormatter} domain={['10:00', '11:00']} />
-          <recharts.YAxis />
-          <recharts.Tooltip
-            formatter={(value, name) => {
-              if (name === 'average_count') {
-                return ['people', `${value}`];
-              }
-              return [value, name];
-            }}
-          />
-        </recharts.LineChart>
+      const chartData = getData();
+
+      return (
+        <recharts.ResponsiveContainer width="100%" height={300}>
+          <recharts.LineChart data={chartData}>
+        <recharts.CartesianGrid strokeDasharray="3 3" />
+        <recharts.XAxis dataKey="timestamp" />
+        <recharts.YAxis />
+        <recharts.Tooltip
+          formatter={(value, name) => {
+        if (name === 'average_count') {
+          return [`${value}`, 'people'];
+        }
+        return [value, name];
+          }}
+        />
+        <recharts.Line
+          type="monotone"
+          dataKey="average_count"
+          stroke="#8884d8"
+          strokeWidth={2}
+          dot={false} // Disable points
+          activeDot={false} // Disable active points
+        />
+          </recharts.LineChart>
+        </recharts.ResponsiveContainer>
       );
 }
