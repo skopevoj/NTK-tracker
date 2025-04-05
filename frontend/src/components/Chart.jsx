@@ -4,15 +4,12 @@ import * as recharts from 'recharts';
 export default function Chart({ data, formatTimestamp, startDate }) {
     const getData = () => {
         let rawData = data?.dailyAverage || [];
-
         if (startDate) {
-          // Generate a complete week (7 days) starting from the given startDate.
           const weekData = [];
-          const start = new Date(startDate); // expected format "YYYY-MM-DD"
+          const start = new Date(startDate);
           for (let i = 0; i < 7; i++) {
             const dayDate = new Date(start.getTime() + i * 86400000);
             const dayStr = dayDate.toISOString().split('T')[0];
-            // Find matching entry from rawData (if any)
             const entry = rawData.find((item) => {
               const itemDate = new Date(parseInt(item.interval_start, 10))
                 .toISOString()
@@ -20,7 +17,6 @@ export default function Chart({ data, formatTimestamp, startDate }) {
               return itemDate === dayStr;
             });
             weekData.push({
-              // Display date in desired format (using cs-CZ locale)
               timestamp: dayDate.toLocaleDateString('cs-CZ', {
                 day: '2-digit',
                 month: '2-digit',
@@ -58,8 +54,8 @@ export default function Chart({ data, formatTimestamp, startDate }) {
           dataKey="average_count"
           stroke="#8884d8"
           strokeWidth={2}
-          dot={false} // Disable points
-          activeDot={false} // Disable active points
+          dot={false}
+          activeDot={false}
         />
           </recharts.LineChart>
         </recharts.ResponsiveContainer>
