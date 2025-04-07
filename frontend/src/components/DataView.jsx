@@ -90,7 +90,7 @@ export default function DataView() {
 
       <div>
         {data && data.dailyAverage ? (
-          <Chart data={data} startDate={startDate} formatTimestamp={formatTimestamp} selectedDate={selectedDate} />
+          <Chart data={data} formatTimestamp={formatTimestamp} selectedDate={selectedDate} />
         ) : !data ? (
           <p>Loading...</p>
         ) : data.dailyAverage?.length === 0 ? (
