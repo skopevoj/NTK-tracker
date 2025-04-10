@@ -2,6 +2,10 @@
 
 NTK Tracker is a simple project designed to track and visualize library occupancy data. This project was created primarily to learn and practice Node.js, along with other related technologies.
 
+## Live Demo
+
+You can access the live demo of the project here: [NTK Tracker Live Demo]([https://ai-investor-production.up.railway.app/](https://ntk-tracker-production.up.railway.app/))
+
 ## Features
 
 - Fetch and display current and historical library occupancy data.
