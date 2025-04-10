@@ -4,7 +4,7 @@ NTK Tracker is a simple project designed to track and visualize library occupanc
 
 ## Live Demo
 
-You can access the live demo of the project here: [NTK Tracker Live Demo]([https://ai-investor-production.up.railway.app/](https://ntk-tracker-production.up.railway.app/))
+You can access the live demo of the project here: [NTK Tracker Live Demo](https://ntk-tracker-production.up.railway.app/)
 
 ## Features
 
