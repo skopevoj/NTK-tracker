@@ -1,19 +1,36 @@
 import './App.css';
+import './index.css';
 import DataView from './components/DataView.jsx'
+
 function App() {
   return (
-    <>
-      <h1>NTK Tracker</h1>
-      <p>Tato aplikace umožňuje uživatelům sledovat a vizualizovat obsazenost knihovny v průběhu času pomocí grafu..</p>
-      <p>
-        Projekt je dostupný na {" "}
-        <a href="https://github.com/WarriorKnight/NTK-trackerr" target="_blank" rel="noopener noreferrer">
-          GitHubu
-        </a>
-      </p>
-      <DataView/>
-    </>
-  );
+    <div className="container">
+      <header className="header">
+        <div className="brand">
+          <h1>NTK Tracker</h1>
+          <p className="subtitle">Minimal live library occupancy dashboard</p>
+        </div>
+        <nav className="nav">
+          <a
+            className="link"
+            href="https://github.com/WarriorKnight/NTK-trackerr"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Source on GitHub
+          </a>
+        </nav>
+      </header>
+
+      <main>
+        <DataView />
+      </main>
+
+      <footer className="footer">
+        Built for learning — live demo available online
+      </footer>
+    </div>
+  )
 }
 
 export default App;

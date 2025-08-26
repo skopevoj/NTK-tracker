@@ -1,36 +1,46 @@
 import React from 'react';
+import Button from './ui/Button';
 
 export default function DateSelector({
   selectedDate,
   setSelectedDate,
 }) {
+  const toISO = (d) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    return dt.toISOString().split('T')[0];
+  };
 
   const handlePrevDay = () => {
-    if (selectedDate) {
-      const prevDay = new Date(selectedDate);
-      prevDay.setDate(prevDay.getDate() - 1);
-      setSelectedDate(prevDay.toISOString().split("T")[0]);
-    }
+    if (!selectedDate) return;
+    const prev = new Date(selectedDate);
+    prev.setDate(prev.getDate() - 1);
+    setSelectedDate(toISO(prev));
   };
 
   const handleNextDay = () => {
-    if (selectedDate) {
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      setSelectedDate(nextDay.toISOString().split("T")[0]);
-    }
+    if (!selectedDate) return;
+    const next = new Date(selectedDate);
+    next.setDate(next.getDate() + 1);
+    setSelectedDate(toISO(next));
+  };
+
+  const handleToday = () => {
+    setSelectedDate(toISO(new Date()));
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <button onClick={handlePrevDay}>◀</button>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          style={{ margin: "0 10px" }}
-        />
-        <button onClick={handleNextDay}>▶</button>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12 }}>
+      <Button onClick={handlePrevDay} aria-label="Previous day">◀</Button>
+      <input
+        className="input-date"
+        type="date"
+        value={selectedDate || ''}
+        onChange={(e) => setSelectedDate(e.target.value)}
+        aria-label="Select date"
+      />
+      <Button onClick={handleNextDay} aria-label="Next day">▶</Button>
+      <Button onClick={handleToday} className="ml-2 bg-gray-800 hover:bg-gray-700" aria-label="Today">Today</Button>
     </div>
   );
 }
