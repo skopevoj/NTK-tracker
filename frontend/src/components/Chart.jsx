@@ -3,10 +3,8 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, L
 export default function Chart({ data, prediction, formatTimestamp, selectedDate }) {
   const rawData = data?.dailyAverage || [];
 
-  // Helper: return a UTC "HH:MM" label from various possible interval_start formats
   const toLabel = (interval) => {
     if (!interval) return null;
-    // already an "HH:MM" label
     if (/^\d{2}:\d{2}$/.test(interval)) return interval;
     if (typeof formatTimestamp === "function") {
       const f = formatTimestamp(interval);
@@ -41,7 +39,33 @@ export default function Chart({ data, prediction, formatTimestamp, selectedDate 
   const firstLabel = rawData.length > 0 ? toLabel(rawData[0].interval_start) : "00:00";
   const firstIndex = fullDayData.findIndex((d) => d.timestamp === firstLabel);
   const startIndex = firstIndex >= 0 ? firstIndex : 0;
-  const chartData = fullDayData.slice(startIndex);
+
+  // find last index in fullDayData that contains real average_count (global index)
+  let lastRealIndex = -1;
+  for (let i = 0; i < fullDayData.length; i++) {
+    if (fullDayData[i].average_count !== null && fullDayData[i].average_count !== undefined) {
+      lastRealIndex = i;
+    }
+  }
+
+  // Build chartData slice. Use combined_value = real || prediction to ensure identical path geometry,
+  // and solid_value only for the real-data segment (overlay).
+  const slicedFull = fullDayData.slice(startIndex);
+  const chartData = slicedFull.map((point, idx) => {
+    const globalIdx = startIndex + idx;
+    const combined_value =
+      point.average_count != null
+        ? point.average_count
+        : point.prediction_count != null
+        ? point.prediction_count
+        : null;
+    const solid_value = globalIdx <= lastRealIndex ? point.average_count : null;
+    return {
+      ...point,
+      combined_value,
+      solid_value,
+    };
+  });
 
   const maxVal = rawData.reduce((acc, cur) => Math.max(acc, Number(cur.average_count || 0)), 0);
   const maxPredictionVal = prediction
@@ -80,25 +104,32 @@ export default function Chart({ data, prediction, formatTimestamp, selectedDate 
               }}
               contentStyle={{ background: "rgba(6,18,38,0.8)", border: "none", color: "var(--text)" }}
             />
+            {/* dashed full path (uses combined values) behind */}
+            {showPrediction && (
+              <Line
+                type="monotone"
+                dataKey="combined_value"
+                stroke="#7c5cff"
+                strokeWidth={2}
+                strokeDasharray="6 6"
+                dot={false}
+                activeDot={false}
+                connectNulls
+                strokeLinecap="round"
+                isAnimationActive={false}
+              />
+            )}
+            {/* solid overlay for real-data segment only */}
             <Line
               type="monotone"
-              dataKey="average_count"
+              dataKey="solid_value"
               stroke="#7c5cff"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4 }}
               connectNulls
+              strokeLinecap="round"
             />
-            {showPrediction && (
-              <Line
-                type="monotone"
-                dataKey="prediction_count"
-                stroke="#FFD700"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            )}
           </LineChart>
         </ResponsiveContainer>
       )}
