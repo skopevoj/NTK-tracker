@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 /* Reset + modern variables */
-:root{
+:root {
   --bg: #0f1724;
   --card: #0b1220;
   --muted: #9aa4b2;
   --accent: #7c5cff;
-  --glass: rgba(255,255,255,0.04);
-  --glass-2: rgba(255,255,255,0.02);
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-2: rgba(255, 255, 255, 0.02);
   --text: #e6eef8;
   --success: #7ee787;
   --danger: #ff7b7b;
@@ -17,21 +17,27 @@
   color-scheme: dark;
 }
 
-*{box-sizing:border-box}
-html,body,#root{height:100%}
-body{
-  margin:0;
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
   background: linear-gradient(180deg, #071026 0%, #061226 60%);
-  color:var(--text);
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  min-width:320px;
-  font-size:15px;
-  line-height:1.4;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-width: 320px;
+  font-size: 15px;
+  line-height: 1.4;
 }
 
 /* Utility */
-.container{
+.container {
   /* narrower + less padding for a compact dashboard on desktop */
   max-width: 960px;
   margin: 0 auto;
@@ -48,23 +54,23 @@ button {
 }
 
 /* Small input style for date */
-.input-date{
+.input-date {
   background: var(--glass-2);
   color: var(--text);
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   width: 160px; /* compact by default */
   max-width: 40%;
 }
 
 /* Card */
 .card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.04);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 12px;
   border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.5);
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.5);
 }
 
 .small {
@@ -74,83 +80,112 @@ button {
 
 /* Header */
 .header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 14px;
 }
-.brand h1{
-  margin:0;
-  font-size:18px;
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
   letter-spacing: -0.3px;
 }
 .subtitle {
-  margin:0;
-  font-size:12px;
-  color:var(--muted);
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 /* layout */
 .grid {
-  display:grid;
-  gap:12px;
+  display: grid;
+  gap: 12px;
 }
-.grid.cols-3{
+.grid.cols-3 {
   grid-template-columns: repeat(3, 1fr);
 }
-.grid.cols-2{
+.grid.cols-2 {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.footer{
-  margin-top:36px;
-  text-align:center;
-  color:var(--muted);
-  font-size:13px;
+.footer {
+  margin-top: 36px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 /* Stat card specifics */
 .stat {
-  display:flex;
-  flex-direction:column;
-  gap:6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.stat .value{
-  font-weight:600;
-  font-size:22px;
+.stat .value {
+  font-weight: 600;
+  font-size: 22px;
 }
-.stat .meta{
-  color:var(--muted);
-  font-size:12px;
+.stat .meta {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 /* Responsive */
-@media (max-width:800px){
+@media (max-width: 800px) {
   .container {
     max-width: 100%;
     padding: 12px;
   }
-  .grid.cols-3{ grid-template-columns: 1fr; }
-  .grid.cols-2{ grid-template-columns: 1fr; }
-  .header{ flex-direction:column; align-items:flex-start; gap:8px; }
-  .input-date { width: 100%; max-width: none; }
-  .card { padding: 12px; }
-  .stat .value { font-size:20px; }
+  .grid.cols-3 {
+    grid-template-columns: 1fr;
+  }
+  .grid.cols-2 {
+    grid-template-columns: 1fr;
+  }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .input-date {
+    width: 100%;
+    max-width: none;
+  }
+  .card {
+    padding: 12px;
+  }
+  .stat .value {
+    font-size: 20px;
+  }
 }
 
 /* Extra small phones */
 @media (max-width: 420px) {
-  body { font-size: 14px; }
-  .container { padding: 10px; }
-  .brand h1 { font-size:16px; }
-  .subtitle { font-size:11px; }
-  .input-date { padding: 8px; }
-  .card { padding: 10px; border-radius: 8px; }
-  .stat .value { font-size:18px; }
+  body {
+    font-size: 14px;
+  }
+  .container {
+    padding: 10px;
+  }
+  .brand h1 {
+    font-size: 16px;
+  }
+  .subtitle {
+    font-size: 11px;
+  }
+  .input-date {
+    padding: 8px;
+  }
+  .card {
+    padding: 10px;
+    border-radius: 8px;
+  }
+  .stat .value {
+    font-size: 18px;
+  }
 }
 
-
 .my-line {
-  filter: drop-shadow(1px 1px 5px #736bfa);
+  filter: drop-shadow(1px 1px 15px #000000);
 }

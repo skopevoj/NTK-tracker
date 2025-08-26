@@ -1,6 +1,6 @@
-import './App.css';
-import './index.css';
-import DataView from './components/DataView.jsx'
+import "./App.css";
+import "./index.css";
+import DataView from "./components/DataView.jsx";
 
 function App() {
   return (
@@ -8,7 +8,7 @@ function App() {
       <header className="header">
         <div className="brand">
           <h1>NTK Tracker</h1>
-          <p className="subtitle">Minimal live library occupancy dashboard</p>
+          {/* <p className="subtitle">Minimal live library occupancy dashboard</p> */}
         </div>
         <nav className="nav">
           <a
@@ -26,11 +26,9 @@ function App() {
         <DataView />
       </main>
 
-      <footer className="footer">
-        Built for learning — live demo available online
-      </footer>
+      <footer className="footer">Built for learning — live demo available online</footer>
     </div>
-  )
+  );
 }
 
 export default App;
