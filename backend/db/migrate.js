@@ -1,4 +1,4 @@
-const db = require('./client');
+const db = require("./client");
 
 async function migrate() {
   try {

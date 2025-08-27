@@ -19,7 +19,11 @@ export default function ActivityHeatmap() {
         `;
         const response = await axios.post("/api/graphql", { query });
         if (response.data && response.data.data) {
-          setData(response.data.data.dailyAverages);
+          const fetchedData = response.data.data.dailyAverages;
+          console.log(`ActivityHeatmap: Received ${fetchedData.length} days of data`);
+          console.log("First few data points:", fetchedData.slice(0, 5));
+          console.log("Last few data points:", fetchedData.slice(-5));
+          setData(fetchedData);
         } else {
           setError("Unexpected API response");
         }
@@ -32,8 +36,8 @@ export default function ActivityHeatmap() {
     fetchData();
   }, []);
 
-  if (loading) return <div className="small">Loading activity heatmap…</div>;
-  if (error) return <div className="small">Error: {error}</div>;
+  if (loading) return <div className="loading">Loading activity heatmap...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
 
   // Create a map of date to average
   const dataMap = {};
@@ -41,24 +45,30 @@ export default function ActivityHeatmap() {
     dataMap[d.date] = d.average;
   });
 
-  // Find the max average for scaling
   const maxAvg = Math.max(...Object.values(dataMap), 0);
+  console.log(`ActivityHeatmap: Max average: ${maxAvg}, Total unique dates: ${Object.keys(dataMap).length}`);
 
-  // Generate 365 days back from today, padded to full weeks (Sunday to Saturday)
+  // Generate days for heatmap - show last 52 weeks (364 days) plus padding for full weeks
   const today = new Date();
   const startDate = new Date(today);
-  startDate.setDate(today.getDate() - 364);
+  startDate.setDate(today.getDate() - 363); // 52 weeks = 364 days, so go back 363 days
 
-  // Find Sunday before startDate
-  const startDayOfWeek = startDate.getDay(); // 0=Sun
+  // Find Sunday before startDate to align weeks properly
+  const startDayOfWeek = startDate.getDay();
   const daysToSubtract = startDayOfWeek === 0 ? 0 : startDayOfWeek;
   startDate.setDate(startDate.getDate() - daysToSubtract);
 
+  // Find Saturday after today to complete the last week
   const endDate = new Date(today);
-  // Find Saturday after endDate
   const endDayOfWeek = endDate.getDay();
   const daysToAdd = endDayOfWeek === 6 ? 0 : 6 - endDayOfWeek;
   endDate.setDate(endDate.getDate() + daysToAdd);
+
+  console.log(
+    `ActivityHeatmap: Date range from ${startDate.toISOString().split("T")[0]} to ${
+      endDate.toISOString().split("T")[0]
+    }`
+  );
 
   const days = [];
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -67,46 +77,53 @@ export default function ActivityHeatmap() {
       date: dateStr,
       average: dataMap[dateStr] || 0,
       dayOfWeek: d.getDay(),
+      hasData: dataMap.hasOwnProperty(dateStr),
     });
   }
 
-  // Group into weeks (7 days each, starting Sunday)
   const weeks = [];
   for (let i = 0; i < days.length; i += 7) {
     weeks.push(days.slice(i, i + 7));
   }
 
-  // Day labels for the left side
-  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  console.log(`ActivityHeatmap: Generated ${days.length} days in ${weeks.length} weeks`);
+  const daysWithData = days.filter((d) => d.hasData).length;
+  console.log(`ActivityHeatmap: ${daysWithData} days have actual data`);
 
-  // Color palette variables for maintainability
-  const colorPalette = {
-    gray: "hsl(221, 53.60%, 13.50%)",
-    lightGreen: "hsl(120, 50%, 80%)",
-    darkGreen: "hsl(120, 50%, 30%)",
-  };
+  // Use full day names with unique keys to fix React key conflicts
+  const dayLabels = [
+    { short: "S", full: "Sunday", index: 0 },
+    { short: "M", full: "Monday", index: 1 },
+    { short: "T", full: "Tuesday", index: 2 },
+    { short: "W", full: "Wednesday", index: 3 },
+    { short: "T", full: "Thursday", index: 4 },
+    { short: "F", full: "Friday", index: 5 },
+    { short: "S", full: "Saturday", index: 6 },
+  ];
 
-  // Color function: 0 = no data (gray), green shades from light to dark based on maxAvg
-  const getColor = (avg) => {
-    if (avg === 0 || maxAvg === 0) return colorPalette.gray; // Gray for no data
-    const intensity = avg / maxAvg; // Scale relative to max
-    const lightness = 20 + intensity * 60; // Lightness from 20% (dark green) to 80% (light green), inverted
-    return `hsl(120, 50%, ${lightness}%)`; // Green hue
-  };
-
-  // Glow function for each cell
-  const getGlow = (avg) => {
-    const color = getColor(avg);
-    return avg === 0 ? "none" : `0 0 2px ${color}`;
+  const getColor = (avg, hasData) => {
+    if (!hasData || avg === 0) return "var(--surface)";
+    if (maxAvg === 0) return "var(--surface)";
+    const intensity = Math.min(avg / maxAvg, 1);
+    const alpha = 0.2 + intensity * 0.8;
+    return `rgba(124, 58, 237, ${alpha})`;
   };
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <h3 style={{ fontSize: 16, marginBottom: 10 }}>Last 365 Days Activity</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {/* Month labels row */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 4 }}>
-          <div style={{ width: 30 }}></div> {/* Spacer for day labels */}
+    <>
+      <h3 className="chart-title">
+        Activity Overview (Last 52 Weeks)
+        {daysWithData > 0 && (
+          <span
+            style={{ fontSize: "0.875rem", fontWeight: "normal", color: "var(--text-muted)", marginLeft: "0.5rem" }}
+          >
+            {daysWithData} days with data
+          </span>
+        )}
+      </h3>
+      <div className="heatmap-container">
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <div style={{ width: "20px" }}></div>
           {weeks.map((week, index) => {
             const firstDay = week[0];
             const date = new Date(firstDay.date);
@@ -114,39 +131,49 @@ export default function ActivityHeatmap() {
             const prevMonth =
               index > 0 ? new Date(weeks[index - 1][0].date).toLocaleString("default", { month: "short" }) : "";
             return (
-              <div key={index} style={{ width: 12, textAlign: "center", fontSize: 10, color: "var(--muted)" }}>
+              <div
+                key={`month-${index}`}
+                style={{ width: "14px", textAlign: "center", fontSize: "10px", color: "var(--text-muted)" }}
+              >
                 {month !== prevMonth ? month : ""}
               </div>
             );
           })}
         </div>
-        {/* Main grid with day labels on left */}
-        <div style={{ display: "flex", gap: 2, overflowX: "auto" }}>
-          {/* Day labels column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, width: 30 }}>
-            {dayLabels.map((day) => (
+
+        <div className="heatmap-grid" style={{ display: "flex", gap: "2px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px", width: "20px" }}>
+            {dayLabels.map((dayInfo, index) => (
               <div
-                key={day}
-                style={{ height: 12, display: "flex", alignItems: "center", fontSize: 10, color: "var(--muted)" }}
+                key={`day-label-${dayInfo.full}-${dayInfo.index}`}
+                style={{
+                  height: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  fontSize: "10px",
+                  color: "var(--text-muted)",
+                  visibility: index % 2 === 1 ? "visible" : "hidden",
+                }}
               >
-                {day}
+                {dayInfo.short}
               </div>
             ))}
           </div>
-          {/* Weeks grid */}
+
           {weeks.map((week, weekIndex) => (
-            <div key={weekIndex} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {week.map((day) => (
+            <div key={`week-${weekIndex}`} className="heatmap-week">
+              {week.map((day, dayIndex) => (
                 <div
-                  key={day.date}
-                  title={`${day.date}: ${day.average.toFixed(1)} avg people`}
+                  key={`day-${day.date}-${weekIndex}-${dayIndex}`}
+                  className="heatmap-cell"
+                  title={`${day.date}: ${day.hasData ? day.average.toFixed(1) + " avg people" : "No data"}`}
                   style={{
-                    width: 12,
-                    height: 12,
-                    backgroundColor: getColor(day.average),
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    boxShadow: getGlow(day.average), // Add glow effect
+                    width: "14px",
+                    height: "14px",
+                    backgroundColor: getColor(day.average, day.hasData),
+                    borderRadius: "3px",
+                    border: `1px solid ${day.hasData ? "var(--border)" : "rgba(255,255,255,0.02)"}`,
+                    opacity: day.hasData ? 1 : 0.3,
                   }}
                 />
               ))}
@@ -154,25 +181,41 @@ export default function ActivityHeatmap() {
           ))}
         </div>
       </div>
-      <div
-        style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 12, color: "var(--muted)" }}
-      >
+
+      <div className="heatmap-legend">
         <span>Less</span>
-        <div style={{ display: "flex", gap: 4 }}>
-          {[0, 0.25 * maxAvg, 0.5 * maxAvg, 0.75 * maxAvg, maxAvg].map((val) => (
+        <div className="heatmap-legend-scale">
+          {[0, 0.25, 0.5, 0.75, 1].map((val, index) => (
             <div
-              key={val}
+              key={`legend-${index}`}
               style={{
-                width: 12,
-                height: 12,
-                backgroundColor: getColor(val),
-                borderRadius: 2,
+                width: "14px",
+                height: "14px",
+                backgroundColor: getColor(val * maxAvg, true),
+                borderRadius: "3px",
+                border: "1px solid var(--border)",
               }}
             />
           ))}
         </div>
         <span>More</span>
       </div>
-    </div>
+
+      {daysWithData === 0 && (
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "1rem",
+            background: "var(--surface)",
+            borderRadius: "var(--radius-md)",
+            fontSize: "0.875rem",
+            color: "var(--text-muted)",
+            textAlign: "center",
+          }}
+        >
+          No historical data available. The heatmap will populate as data is collected over time.
+        </div>
+      )}
+    </>
   );
 }

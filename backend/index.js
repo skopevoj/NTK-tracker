@@ -27,6 +27,10 @@ app.use("/api", router);
 const setupPredictRoute = require("./routes/predict");
 setupPredictRoute(router);
 
+// Export route setup
+const setupExportRoute = require("./routes/export");
+setupExportRoute(router);
+
 const staticPath = path.join(__dirname, "dist");
 app.use(express.static(staticPath));
 

@@ -1,4 +1,10 @@
-const { getOccupancyHistory, highestOccupancy, currentOccupancy, getDailyAverages, getWeeklyAverages } = require("../db/occupancy");
+const {
+  getOccupancyHistory,
+  highestOccupancy,
+  currentOccupancy,
+  getDailyAverages,
+  getWeeklyAverages,
+} = require("../db/occupancy");
 
 const rootValue = {
   occupancyHistory: async ({ limit }) => await getOccupancyHistory(limit || 50),

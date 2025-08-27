@@ -1,52 +1,115 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import DateSelector from "./DateSelector";
 import Chart from "./Chart";
-import Card from "./ui/Card";
+import ActivityHeatmap from "./ActivityHeatmap";
+import WeeklyStats from "./WeeklyStats";
+
+// Simple in-memory cache for API responses
+const apiCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function DataView() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const MIN_DATE = "2025-05-01";
+  const TODAY = new Date().toISOString().split("T")[0];
+  const clampToRange = (d) => {
+    if (!d) return TODAY;
+    if (d < MIN_DATE) return MIN_DATE;
+    if (d > TODAY) return TODAY;
+    return d;
+  };
+  const [selectedDate, setSelectedDate] = useState(clampToRange(new Date().toISOString().split("T")[0]));
   const [data, setData] = useState(null);
   const [highest, setHighest] = useState({ people_count: 0, timestamp: null });
   const [current, setCurrent] = useState({ people_count: 0, timestamp: null });
-  const [todayPrediction, setTodayPrediction] = useState(null);
-  const [tomorrowPrediction, setTomorrowPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState(null);
+  const loadingTimeoutRef = useRef(null);
+
+  // Cache utility functions
+  const getCachedData = (key) => {
+    const cached = apiCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  };
+
+  const setCachedData = (key, data) => {
+    apiCache.set(key, {
+      data,
+      timestamp: Date.now(),
+    });
+  };
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    const fetchData = async () => {
+      const cacheKey = `predict-${selectedDate}`;
 
-    const query = `
-      query {
-        dailyAverage(date: "${selectedDate}") {
-          interval_start
-          average_count
+      // Show loading indicator after 300ms to avoid flashing for cached requests
+      loadingTimeoutRef.current = setTimeout(() => {
+        setChartLoading(true);
+      }, 300);
+
+      try {
+        // Check cache first
+        const cachedData = getCachedData(cacheKey);
+        if (cachedData) {
+          setData(cachedData);
+          setError(null);
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+          }
+          setChartLoading(false);
+          return;
         }
-      }
-    `;
 
-    axios
-      .post("/api/graphql", { query })
-      .then((response) => {
-        if (response.data && response.data.data) {
-          setData(response.data.data);
+        setError(null);
+        const response = await axios.get(`/api/predict?date=${selectedDate}`);
+
+        if (response.data) {
+          setData(response.data);
+          setCachedData(cacheKey, response.data);
         } else {
           setData(null);
           setError("Unexpected API response");
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         setData(null);
         setError(err.message || "Failed to fetch data");
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+        }
+        setLoading(false);
+        setChartLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Cleanup timeout on unmount or dependency change
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
   }, [selectedDate]);
 
   useEffect(() => {
     const fetchAdditional = async () => {
+      const cacheKey = "additional-stats";
+
       try {
+        // Check cache first
+        const cachedData = getCachedData(cacheKey);
+        if (cachedData) {
+          setHighest(cachedData.highest || { people_count: 0, timestamp: null });
+          setCurrent(cachedData.current || { people_count: 0, timestamp: null });
+          return;
+        }
+
         const query = `
           query {
             highestOccupancy {
@@ -61,35 +124,20 @@ export default function DataView() {
         `;
         const response = await axios.post("/api/graphql", { query });
         if (response.data && response.data.data) {
-          setHighest(response.data.data.highestOccupancy || { people_count: 0, timestamp: null });
-          setCurrent(response.data.data.currentOccupancy || { people_count: 0, timestamp: null });
+          const statsData = {
+            highest: response.data.data.highestOccupancy || { people_count: 0, timestamp: null },
+            current: response.data.data.currentOccupancy || { people_count: 0, timestamp: null },
+          };
+
+          setHighest(statsData.highest);
+          setCurrent(statsData.current);
+          setCachedData(cacheKey, statsData);
         }
       } catch (err) {
-        // silent fail - keep previous values
         console.error(err);
       }
     };
     fetchAdditional();
-  }, []);
-
-  useEffect(() => {
-    const fetchPredictions = async () => {
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        const tomorrow = new Date(new Date().getTime() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-        const [todayRes, tomorrowRes] = await Promise.all([
-          axios.get(`/api/predict?type=today&date=${today}`),
-          axios.get(`/api/predict?type=tomorrow&date=${tomorrow}`),
-        ]);
-
-        setTodayPrediction(todayRes.data);
-        setTomorrowPrediction(tomorrowRes.data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchPredictions();
   }, []);
 
   const formatTimestamp = (timestamp) => {
@@ -153,65 +201,70 @@ export default function DataView() {
   };
 
   return (
-    <>
-      <div className="grid cols-3" style={{ marginBottom: 16 }}>
-        <Card className="stat">
-          <div className="small">Highest recorded</div>
-          <div className="value">{highest?.people_count ?? "-"}</div>
-          <div className="meta">on {safeDate(highest?.timestamp)}</div>
-        </Card>
-
-        <Card className="stat">
-          <div className="small">Current occupancy</div>
-          <div className="value" style={{ color: "var(--accent)" }}>
-            {current?.people_count ?? "-"}
-          </div>
-          <div className="meta">as of {safeDate(current?.timestamp)}</div>
-        </Card>
-      </div>
-
-      <div className="card" style={{ marginBottom: 12, position: "relative" }}>
-        {data && data.dailyAverage && data.dailyAverage.length > 0 ? (
-          <>
-            <Chart
-              data={data}
-              prediction={todayPrediction}
-              formatTimestamp={formatTimestamp}
-              selectedDate={selectedDate}
-              isTodayPrediction={true}
-            />
-            {loading && (
-              <div style={{ position: "absolute", top: 8, right: 12 }} className="small">
-                Updating…
-              </div>
-            )}
-          </>
-        ) : loading ? (
-          <div className="small">Loading chart…</div>
-        ) : error ? (
-          <div className="small">Error: {error}</div>
-        ) : (
-          <div className="small">No data available for the selected day.</div>
-        )}
-      </div>
-
-      <DateSelector selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
-
-      {tomorrowPrediction && Object.keys(tomorrowPrediction).length > 0 && (
-        <div className="card" style={{ marginBottom: 12, position: "relative" }}>
-          <h3>Tomorrow's Prediction</h3>
-          <Chart
-            data={{
-              dailyAverage: Object.entries(tomorrowPrediction).map(([time, count]) => ({
-                interval_start: time,
-                average_count: count,
-              })),
-            }}
-            formatTimestamp={formatTimestamp}
-            selectedDate={selectedDate}
-          />
+    <div className="grid grid-cols-1" style={{ gap: "2rem" }}>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2">
+        <div className="glass-card stat-card">
+          <div className="stat-label">Highest Recorded</div>
+          <div className="stat-value">{highest?.people_count ?? "-"}</div>
+          <div className="stat-meta">on {safeDate(highest?.timestamp)}</div>
         </div>
-      )}
-    </>
+
+        <div className="glass-card stat-card">
+          <div className="stat-label">Current Occupancy</div>
+          <div className="stat-value accent">{current?.people_count ?? "-"}</div>
+          <div className="stat-meta">as of {formatTimestamp(current?.timestamp)}</div>
+        </div>
+      </div>
+
+      {/* Main Chart */}
+      <div className="glass-card">
+        <div style={{ position: "relative" }}>
+          <h2 className="chart-title">
+            Daily Occupancy - {new Date(selectedDate + "T00:00:00").toLocaleDateString("cs-CZ")}
+          </h2>
+          {chartLoading && (
+            <div
+              style={{
+                position: "absolute",
+                top: "0.5rem",
+                right: "1rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                color: "var(--text-muted)",
+                fontSize: "0.875rem",
+              }}
+            >
+              <div className="loading-spinner"></div>
+              Updating...
+            </div>
+          )}
+        </div>
+        <div className="chart-container">
+          {data && data.length > 0 ? (
+            <Chart data={data} formatTimestamp={formatTimestamp} selectedDate={selectedDate} />
+          ) : loading ? (
+            <div className="loading">Loading chart data...</div>
+          ) : error ? (
+            <div className="error">Error: {error}</div>
+          ) : (
+            <div className="loading">No data available for the selected day</div>
+          )}
+        </div>
+        <DateSelector selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
+      </div>
+
+      {/* Activity Overview */}
+      <div className="grid grid-cols-1">
+        <div className="glass-card">
+          <ActivityHeatmap />
+        </div>
+
+        <div className="glass-card">
+          <WeeklyStats />
+        </div>
+      </div>
+    </div>
   );
 }

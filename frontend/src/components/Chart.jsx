@@ -1,8 +1,6 @@
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Line } from "recharts";
 
-export default function Chart({ data, prediction, formatTimestamp, selectedDate }) {
-  const rawData = data?.dailyAverage || [];
-
+export default function Chart({ data, formatTimestamp }) {
   const toLabel = (interval) => {
     if (!interval) return null;
     if (/^\d{2}:\d{2}$/.test(interval)) return interval;
@@ -19,116 +17,114 @@ export default function Chart({ data, prediction, formatTimestamp, selectedDate 
     return null;
   };
 
-  const dataMap = new Map(
-    rawData.map((item) => [toLabel(item.interval_start), item.average_count]).filter(([k]) => k !== null)
-  );
-
-  const fullDayData = Array.from({ length: 24 * 4 }, (_, i) => {
-    const hour = Math.floor(i / 4)
-      .toString()
-      .padStart(2, "0");
-    const minute = ((i % 4) * 15).toString().padStart(2, "0");
-    const timestamp = `${hour}:${minute}`;
-    return {
-      timestamp,
-      average_count: dataMap.get(timestamp) ?? null,
-      prediction_count: prediction ? prediction[timestamp] ?? null : null,
-    };
-  });
-
-  const firstLabel = rawData.length > 0 ? toLabel(rawData[0].interval_start) : "00:00";
-  const firstIndex = fullDayData.findIndex((d) => d.timestamp === firstLabel);
-  const startIndex = firstIndex >= 0 ? firstIndex : 0;
-
-  // find last index in fullDayData that contains real average_count (global index)
-  let lastRealIndex = -1;
-  for (let i = 0; i < fullDayData.length; i++) {
-    if (fullDayData[i].average_count !== null && fullDayData[i].average_count !== undefined) {
-      lastRealIndex = i;
-    }
+  // Generate full time slots from 06:00 to 24:00 in 15-min intervals
+  const fullTimeSlots = [];
+  for (let i = 0; i <= 18 * 4; i++) {
+    const hour = Math.floor(i / 4) + 6;
+    const minute = (i % 4) * 15;
+    const time = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+    fullTimeSlots.push(time);
   }
 
-  // Build chartData slice. Use combined_value = real || prediction to ensure identical path geometry,
-  // and solid_value only for the real-data segment (overlay).
-  const slicedFull = fullDayData.slice(startIndex);
-  const chartData = slicedFull.map((point, idx) => {
-    const globalIdx = startIndex + idx;
-    const combined_value =
-      point.average_count != null
-        ? point.average_count
-        : point.prediction_count != null
-        ? point.prediction_count
-        : null;
-    const solid_value = globalIdx <= lastRealIndex ? point.average_count : null;
-    return {
-      ...point,
-      combined_value,
-      solid_value,
-    };
+  // Map data to full slots, using null for missing
+  const dataMap = {};
+  data.forEach((item) => {
+    const time = toLabel(item.time);
+    if (time && fullTimeSlots.includes(time)) {
+      dataMap[time] = {
+        timestamp: time,
+        people_count: item.people_count,
+        is_prediction: item.is_prediction,
+      };
+    }
   });
 
-  const maxVal = rawData.reduce((acc, cur) => Math.max(acc, Number(cur.average_count || 0)), 0);
-  const maxPredictionVal = prediction
-    ? Object.values(prediction).reduce((acc, cur) => Math.max(acc, Number(cur || 0)), 0)
-    : 0;
-  const yMax = Math.max(10, Math.ceil(Math.max(maxVal, maxPredictionVal) * 1.15));
+  const chartData = fullTimeSlots.map((time) => {
+    const [h, m] = time.split(":").map(Number);
+    const x = h * 60 + m;
+    return dataMap[time] ? { ...dataMap[time], x } : { timestamp: time, people_count: null, is_prediction: true, x };
+  });
 
-  const firstHour = parseInt((chartData[0]?.timestamp || "00:00").split(":")[0], 10);
+  const maxVal = chartData.reduce((acc, cur) => Math.max(acc, Number(cur.people_count || 0)), 0);
+  const yMax = Math.max(10, Math.ceil(maxVal * 1.15));
+
+  const firstHour = 6;
   const xTicks = Array.from({ length: Math.ceil((24 - firstHour) / 2) + 1 }, (_, i) => {
     const hour = firstHour + i * 2;
-    return `${hour.toString().padStart(2, "0")}:00`;
+    return hour * 60;
   });
 
-  const todayUTC = new Date().toISOString().split("T")[0];
-  const showPrediction = prediction && selectedDate === todayUTC;
+  const solidData = chartData.map((item) => (item.is_prediction ? { ...item, people_count: null } : item));
+  const dashedData = chartData.map((item) => (!item.is_prediction ? { ...item, people_count: null } : item));
 
   return (
     <div style={{ width: "100%", height: 320 }}>
-      {rawData.length === 0 && (!prediction || Object.keys(prediction).length === 0) ? (
-        <div className="small">No chart data</div>
+      {chartData.length === 0 ? (
+        <div className="loading">No chart data available</div>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} className="my-line">
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
+          <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            <CartesianGrid strokeDasharray="2 2" stroke="var(--border)" opacity={0.5} />
             <XAxis
-              dataKey="timestamp"
-              name="Time"
-              type="category"
-              ticks={xTicks}
-              domain={[chartData[0]?.timestamp || "00:00", "23:45"]}
-            />
-            <YAxis domain={[0, yMax]} tick={{ fill: "var(--muted)" }} />
-            <Tooltip
-              formatter={(value) => {
-                return [`${value}`, "people"];
+              dataKey="x"
+              type="number"
+              domain={[360, 1440]}
+              tickFormatter={(value) => {
+                const h = Math.floor(value / 60);
+                const m = value % 60;
+                return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
               }}
-              contentStyle={{ background: "rgba(6,18,38,0.8)", border: "none", color: "var(--text)" }}
+              ticks={xTicks}
+              tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
             />
-            {/* dashed full path (uses combined values) behind */}
-            {showPrediction && (
-              <Line
-                type="monotone"
-                dataKey="combined_value"
-                stroke="#7c5cff"
-                strokeWidth={2}
-                strokeDasharray="6 6"
-                dot={false}
-                activeDot={false}
-                connectNulls
-                strokeLinecap="round"
-                isAnimationActive={false}
-              />
-            )}
-            {/* solid overlay for real-data segment only */}
+            <YAxis
+              domain={[0, yMax]}
+              tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              formatter={(value) => [`${value}`, "people"]}
+              labelFormatter={(value) => {
+                const h = Math.floor(value / 60);
+                const m = value % 60;
+                return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+              }}
+              contentStyle={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--text-primary)",
+                boxShadow: "var(--shadow-xl)",
+              }}
+            />
             <Line
               type="monotone"
-              dataKey="solid_value"
-              stroke="#7c5cff"
-              strokeWidth={2}
+              dataKey="people_count"
+              stroke="var(--accent)"
+              strokeWidth={3}
               dot={false}
-              activeDot={{ r: 4 }}
+              activeDot={{ r: 5, fill: "var(--accent)", stroke: "white", strokeWidth: 2 }}
               connectNulls
               strokeLinecap="round"
+              isAnimationActive={false}
+              data={solidData}
+            />
+            <Line
+              type="monotone"
+              dataKey="people_count"
+              stroke="var(--accent)"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 5, fill: "var(--accent)", stroke: "white", strokeWidth: 2 }}
+              connectNulls
+              strokeLinecap="round"
+              isAnimationActive={false}
+              data={dashedData}
+              strokeDasharray="8 4"
+              opacity={0.7}
             />
           </LineChart>
         </ResponsiveContainer>
