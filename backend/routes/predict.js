@@ -1,0 +1,157 @@
+const { getOccupancyData, currentOccupancy, getOccupancyByDayOfWeek } = require("../db/occupancy");
+
+function setupPredictRoute(router) {
+  router.get("/predict", async (req, res) => {
+    const date = req.query.date ? new Date(req.query.date) : new Date();
+    // Determine day of week using Prague local date
+    const pragueDay = new Date(date.toLocaleString("en-US", { timeZone: "Europe/Prague" }));
+    const dayOfWeek = pragueDay.getDay();
+
+    const historicalData = await getOccupancyByDayOfWeek(dayOfWeek);
+
+    // Helper: get Prague "HH:MM" label from a Date-like value
+    const toPragueHHMM = (d) => {
+      if (!d) return null;
+      // If backend DB helper already returned a Prague-local string like "YYYY-MM-DDTHH:MM:SS" or "YYYY-MM-DD HH:MM:SS"
+      if (typeof d === "string") {
+        const m = d.match(/\d{2}:\d{2}/);
+        if (m) return m[0];
+      }
+      // Fallback: format Date object in Prague timezone
+      try {
+        const ds = new Date(d).toLocaleString("sv-SE", { timeZone: "Europe/Prague" }); // "YYYY-MM-DD HH:MM:SS"
+        const parts = ds.split(" ");
+        return parts[1].slice(0, 5); // "HH:MM"
+      } catch {
+        return null;
+      }
+    };
+
+    const averagedHistoricalPredictions = {};
+    for (const row of historicalData) {
+      const time = toPragueHHMM(row.timestamp);
+      if (!averagedHistoricalPredictions[time]) {
+        averagedHistoricalPredictions[time] = [];
+      }
+      averagedHistoricalPredictions[time].push(row.people_count);
+    }
+
+    for (const time in averagedHistoricalPredictions) {
+      const counts = averagedHistoricalPredictions[time];
+      const average = counts.reduce((a, b) => a + b, 0) / counts.length;
+      averagedHistoricalPredictions[time] = Math.round(average);
+    }
+
+    // Ensure averagedHistoricalPredictions has a value for every 15-minute interval
+    const fullDayHistoricalPredictions = {};
+    for (let i = 0; i < 24 * 4; i++) {
+      const hour = Math.floor(i / 4)
+        .toString()
+        .padStart(2, "0");
+      const minute = ((i % 4) * 15).toString().padStart(2, "0");
+      const time = `${hour}:${minute}`;
+      fullDayHistoricalPredictions[time] =
+        averagedHistoricalPredictions[time] !== undefined ? averagedHistoricalPredictions[time] : null;
+    }
+
+    // Calculate overall average for fallback
+    const allHistoricalValues = Object.values(averagedHistoricalPredictions).filter((val) => val !== null);
+    const overallAverage =
+      allHistoricalValues.length > 0
+        ? Math.round(allHistoricalValues.reduce((a, b) => a + b, 0) / allHistoricalValues.length)
+        : 0;
+
+    for (const time in fullDayHistoricalPredictions) {
+      if (fullDayHistoricalPredictions[time] === null) {
+        fullDayHistoricalPredictions[time] = overallAverage;
+      }
+    }
+
+    const todayUTC = new Date(date.toISOString().split("T")[0] + "T00:00:00Z");
+    const tomorrowUTC = new Date(todayUTC);
+    tomorrowUTC.setDate(tomorrowUTC.getDate() + 1);
+
+    const currentDayData = await getOccupancyData(todayUTC.toISOString(), tomorrowUTC.toISOString());
+    const result = [];
+
+    // Helper to get Prague hour/minute and round to previous 15-min slot
+    const roundToPrevious15Prague = (date) => {
+      // produce Prague "YYYY-MM-DD HH:MM:SS"
+      const pragueStr = new Date(date).toLocaleString("sv-SE", { timeZone: "Europe/Prague" });
+      const [datePart, timePart] = pragueStr.split(" ");
+      const [hourStr, minuteStr] = timePart.split(":");
+      const hour = parseInt(hourStr, 10);
+      const minute = parseInt(minuteStr, 10);
+      const rounded = Math.floor(minute / 15) * 15;
+      return `${hour.toString().padStart(2, "0")}:${rounded.toString().padStart(2, "0")}`;
+    };
+
+    let lastDataPointTime = null;
+    let lastDataPointValue = null;
+    try {
+      const live = await currentOccupancy(); // uses DB function (now returns Prague-local timestamp string)
+      if (live && live.timestamp && typeof live.people_count === "number") {
+        // live.timestamp is Prague-local "YYYY-MM-DDTHH:MM:SS"
+        const liveDate = new Date(live.timestamp.replace("T", " ")); // parse into Date; this is local-like string but we only extract Prague-local parts below
+        lastDataPointTime = roundToPrevious15Prague(liveDate);
+        lastDataPointValue = live.people_count;
+      }
+    } catch (e) {
+      // fall back silently to dailyAverage below
+    }
+
+    if ((!lastDataPointTime || lastDataPointValue === null) && currentDayData.length > 0) {
+      const lastDataPoint = currentDayData[currentDayData.length - 1];
+      // lastDataPoint.interval_start is now Prague-local "YYYY-MM-DDTHH:MM:SS"
+      lastDataPointTime = toPragueHHMM(lastDataPoint.interval_start);
+      lastDataPointValue = lastDataPoint.average_count;
+    }
+
+    let offset = 0;
+    if (lastDataPointTime && fullDayHistoricalPredictions[lastDataPointTime] !== undefined) {
+      offset = lastDataPointValue - fullDayHistoricalPredictions[lastDataPointTime];
+    }
+
+    for (let i = 0; i <= 24 * 4; i++) {
+      const hour = Math.floor(i / 4);
+      const minute = (i % 4) * 15;
+      const time = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+
+      const dataPoint = currentDayData.find((d) => toPragueHHMM(d.interval_start) === time);
+
+      if (dataPoint) {
+        result.push({
+          time: time,
+          people_count: dataPoint.average_count,
+          is_prediction: false,
+        });
+      } else {
+        if (lastDataPointTime && time < lastDataPointTime) {
+          result.push({
+            time: time,
+            people_count: null,
+            is_prediction: true,
+          });
+        } else if (time === lastDataPointTime) {
+          result.push({
+            time: time,
+            people_count: lastDataPointValue !== null ? Math.max(0, lastDataPointValue) : null,
+            is_prediction: false,
+          });
+        } else {
+          const predictedVal = fullDayHistoricalPredictions[time];
+          result.push({
+            time: time,
+            people_count: predictedVal !== null ? Math.max(0, predictedVal + offset) : null,
+            is_prediction: true,
+          });
+        }
+      }
+    }
+    // Filter to only include from 06:00 to 24:00
+    const filteredResult = result.filter((item) => item.time >= "06:00");
+    res.json(filteredResult);
+  });
+}
+
+module.exports = setupPredictRoute;

@@ -41,15 +41,14 @@ async function getOccupancyHistory(limit = 50) {
   }
 }
 
-async function dailyAverage(date) {
+async function getOccupancyData(startDate, endDate) {
   try {
     const result = await db.query(
       `SELECT timestamp AS interval_start, people_count AS average_count
              FROM occupancy_log
-             WHERE timestamp >= ($1::DATE AT TIME ZONE 'UTC') + INTERVAL '6 hours'
-               AND timestamp < (($1::DATE AT TIME ZONE 'UTC') + INTERVAL '1 day')
+             WHERE timestamp >= $1 AND timestamp < $2
              ORDER BY timestamp`,
-      [date]
+      [startDate, endDate]
     );
     // Return interval_start as Prague-local timestamp string
     return result.rows.map((r) => ({
@@ -130,7 +129,7 @@ async function getOccupancyByDayOfWeek(dayOfWeek) {
 module.exports = {
   insertOccupancy,
   getOccupancyHistory,
-  dailyAverage,
+  getOccupancyData,
   currentOccupancy,
   highestOccupancy,
   getOccupancyByDayOfWeek,
