@@ -20,9 +20,6 @@ export default function ActivityHeatmap() {
         const response = await axios.post("/api/graphql", { query });
         if (response.data && response.data.data) {
           const fetchedData = response.data.data.dailyAverages;
-          console.log(`ActivityHeatmap: Received ${fetchedData.length} days of data`);
-          console.log("First few data points:", fetchedData.slice(0, 5));
-          console.log("Last few data points:", fetchedData.slice(-5));
           setData(fetchedData);
         } else {
           setError("Unexpected API response");
@@ -46,7 +43,6 @@ export default function ActivityHeatmap() {
   });
 
   const maxAvg = Math.max(...Object.values(dataMap), 0);
-  console.log(`ActivityHeatmap: Max average: ${maxAvg}, Total unique dates: ${Object.keys(dataMap).length}`);
 
   // Generate days for heatmap - show last 52 weeks (364 days) plus padding for full weeks
   const today = new Date();
@@ -64,12 +60,6 @@ export default function ActivityHeatmap() {
   const daysToAdd = endDayOfWeek === 6 ? 0 : 6 - endDayOfWeek;
   endDate.setDate(endDate.getDate() + daysToAdd);
 
-  console.log(
-    `ActivityHeatmap: Date range from ${startDate.toISOString().split("T")[0]} to ${
-      endDate.toISOString().split("T")[0]
-    }`
-  );
-
   const days = [];
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split("T")[0];
@@ -86,9 +76,7 @@ export default function ActivityHeatmap() {
     weeks.push(days.slice(i, i + 7));
   }
 
-  console.log(`ActivityHeatmap: Generated ${days.length} days in ${weeks.length} weeks`);
   const daysWithData = days.filter((d) => d.hasData).length;
-  console.log(`ActivityHeatmap: ${daysWithData} days have actual data`);
 
   // Use full day names with unique keys to fix React key conflicts
   const dayLabels = [

@@ -85,6 +85,7 @@ function setupPredictRoute(router) {
       tomorrowUTC.setDate(tomorrowUTC.getDate() + 1);
 
       const currentDataStartTime = Date.now();
+
       const currentDayData = await getOccupancyData(todayUTC.toISOString(), tomorrowUTC.toISOString());
       console.log(
         `[PREDICT] Current day data fetched in ${Date.now() - currentDataStartTime}ms (${

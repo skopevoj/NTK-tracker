@@ -45,6 +45,9 @@ export default function Chart({ data, formatTimestamp }) {
     return dataMap[time] ? { ...dataMap[time], x } : { timestamp: time, people_count: null, is_prediction: true, x };
   });
 
+  // print out the data
+  console.log("Chart data points:", chartData);
+
   const maxVal = chartData.reduce((acc, cur) => Math.max(acc, Number(cur.people_count || 0)), 0);
   const yMax = Math.max(10, Math.ceil(maxVal * 1.15));
 

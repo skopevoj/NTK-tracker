@@ -36,13 +36,17 @@ function setCachedData(key, data) {
   );
 }
 
-// Helper: produce Prague local timestamp string "YYYY-MM-DDTHH:MM:SS"
+// Helper: produce Prague local timestamp string "YYYY-MM-DDTHH:MM:SS" with +2 hours added
 function toPragueTimestamp(ts) {
   try {
-    const s = new Date(ts).toLocaleString("sv-SE", { timeZone: "Europe/Prague" });
+    const date = new Date(ts);
+    date.setHours(date.getHours() + 2); // Add 2 hours to the timestamp
+    const s = date.toLocaleString("sv-SE", { timeZone: "Europe/Prague" });
     return s.replace(" ", "T");
   } catch {
-    return new Date(ts).toISOString();
+    const date = new Date(ts);
+    date.setHours(date.getHours() + 2); // Add 2 hours to the timestamp
+    return date.toISOString();
   }
 }
 
