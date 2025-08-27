@@ -1,12 +1,26 @@
-var cron = require('node-cron');
-const scrapeLibraryOccupancy = require('../scrape/scrapeNTK');
-const { insertOccupancy } = require('../db/occupancy');
+var cron = require("node-cron");
+const scrapeLibraryOccupancy = require("../scrape/scrapeNTK");
+const { insertScrapedOccupancy } = require("../db/occupancy");
 
-// cron.schedule('*/5 * * * *', async () => {  
+// Enable the scraper to run every 5 minutes
+// cron.schedule("*/5 * * * *", async () => {
+//   console.log(`[SCRAPER] Starting scrape at ${new Date().toISOString()}`);
+//   const startTime = Date.now();
+
+//   try {
 //     const occupancy = await scrapeLibraryOccupancy();
-//     console.log("Started fetching");
-//     if (occupancy !== null) {
-//         await insertOccupancy(occupancy);
+
+//     if (occupancy !== null && typeof occupancy === "number") {
+//       await insertScrapedOccupancy(occupancy);
+//       console.log(
+//         `[SCRAPER] ✓ Successfully scraped and inserted occupancy: ${occupancy} people in ${Date.now() - startTime}ms`
+//       );
+//     } else {
+//       console.log(`[SCRAPER] ✗ Failed to scrape valid occupancy data in ${Date.now() - startTime}ms`);
 //     }
-//     console.log(`Fetched occupancy: ${occupancy}`);
+//   } catch (error) {
+//     console.error(`[SCRAPER] ✗ Scraper error after ${Date.now() - startTime}ms:`, error.message);
+//   }
 // });
+
+console.log("[SCRAPER] Scheduler initialized - scraping every 5 minutes");

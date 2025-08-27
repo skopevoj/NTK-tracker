@@ -53,18 +53,38 @@ async function insertOccupancy(count) {
       `INSERT INTO occupancy_log (people_count, timestamp) VALUES ($1, CURRENT_TIMESTAMP) RETURNING *`,
       [count]
     );
-    // Clear relevant caches when new data is inserted
+
+    console.log(`[DB] ✓ insertOccupancy completed in ${Date.now() - startTime}ms`);
+    return result.rows[0];
+  } catch (error) {
+    console.error(`[DB] ✗ insertOccupancy failed in ${Date.now() - startTime}ms:`, error.message);
+    return null;
+  }
+}
+
+// New function specifically for scraper insertions that invalidates cache
+async function insertScrapedOccupancy(count) {
+  const startTime = Date.now();
+  try {
+    const result = await db.query(
+      `INSERT INTO occupancy_log (people_count, timestamp) VALUES ($1, CURRENT_TIMESTAMP) RETURNING *`,
+      [count]
+    );
+
+    // Only clear caches when scraped data is inserted (new real data)
     const keysToDelete = Array.from(cache.keys()).filter(
       (key) => key.startsWith("occupancy_") || key.startsWith("current_") || key.startsWith("highest_")
     );
     keysToDelete.forEach((key) => cache.delete(key));
 
     console.log(
-      `[DB] ✓ insertOccupancy completed in ${Date.now() - startTime}ms, cleared ${keysToDelete.length} cache keys`
+      `[DB] ✓ insertScrapedOccupancy completed in ${Date.now() - startTime}ms, cleared ${
+        keysToDelete.length
+      } cache keys`
     );
     return result.rows[0];
   } catch (error) {
-    console.error(`[DB] ✗ insertOccupancy failed in ${Date.now() - startTime}ms:`, error.message);
+    console.error(`[DB] ✗ insertScrapedOccupancy failed in ${Date.now() - startTime}ms:`, error.message);
     return null;
   }
 }
@@ -358,6 +378,7 @@ cron.schedule("*/15 * * * *", () => {
 
 module.exports = {
   insertOccupancy,
+  insertScrapedOccupancy,
   getOccupancyHistory,
   getOccupancyData,
   currentOccupancy,
