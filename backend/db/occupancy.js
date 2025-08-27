@@ -1,4 +1,5 @@
 const db = require("./client");
+const cron = require("node-cron");
 
 // Helper: produce Prague local timestamp string "YYYY-MM-DDTHH:MM:SS"
 function toPragueTimestamp(ts) {
@@ -126,6 +127,47 @@ async function getOccupancyByDayOfWeek(dayOfWeek) {
   }
 }
 
+// In-memory cache for daily averages
+let dailyAveragesCache = new Map();
+
+async function getDailyAverages(lastDays = 365) {
+  const cacheKey = `dailyAverages_${lastDays}`;
+  if (dailyAveragesCache.has(cacheKey)) {
+    return dailyAveragesCache.get(cacheKey);
+  }
+
+  try {
+    const result = await db.query(
+      `SELECT 
+         DATE(timestamp AT TIME ZONE 'Europe/Prague') AS date,
+         ROUND(AVG(people_count), 2) AS average
+       FROM occupancy_log
+       WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${lastDays} days'
+       GROUP BY DATE(timestamp AT TIME ZONE 'Europe/Prague')
+       ORDER BY date DESC
+       LIMIT ${lastDays}`,
+      []
+    );
+    const data = result.rows.map((row) => ({
+      date: row.date.toISOString().split("T")[0], // YYYY-MM-DD
+      average: parseFloat(row.average),
+    }));
+
+    // Cache the result
+    dailyAveragesCache.set(cacheKey, data);
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch daily averages:", error.message);
+    return [];
+  }
+}
+
+// Schedule cache invalidation at midnight daily
+cron.schedule("0 0 * * *", () => {
+  dailyAveragesCache.clear();
+  console.log("Daily averages cache invalidated at midnight.");
+});
+
 module.exports = {
   insertOccupancy,
   getOccupancyHistory,
@@ -133,4 +175,5 @@ module.exports = {
   currentOccupancy,
   highestOccupancy,
   getOccupancyByDayOfWeek,
+  getDailyAverages,
 };
