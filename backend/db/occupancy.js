@@ -36,17 +36,17 @@ function setCachedData(key, data) {
   );
 }
 
-// Helper: produce Prague local timestamp string "YYYY-MM-DDTHH:MM:SS" with +2 hours added
+// Helper: produce Prague local timestamp string "YYYY-MM-DDTHH:MM:SS" with proper timezone handling
 function toPragueTimestamp(ts) {
   try {
     const date = new Date(ts);
-    date.setHours(date.getHours() + 2); // Add 2 hours to the timestamp
-    const s = date.toLocaleString("sv-SE", { timeZone: "Europe/Prague" });
-    return s.replace(" ", "T");
+    // Use toLocaleString with Prague timezone to get the correct local time
+    const pragueTimeString = date.toLocaleString("sv-SE", { timeZone: "Europe/Prague" });
+    return pragueTimeString.replace(" ", "T");
   } catch {
+    // Fallback
     const date = new Date(ts);
-    date.setHours(date.getHours() + 2); // Add 2 hours to the timestamp
-    return date.toISOString();
+    return date.toISOString().slice(0, 19);
   }
 }
 
@@ -134,13 +134,13 @@ async function getOccupancyData(startDate, endDate) {
 
   try {
     const queryStartTime = Date.now();
-    // Use indexed query with explicit date range for better performance
+    // Convert UTC dates to Prague timezone for proper comparison
     const result = await db.query(
-      `SELECT timestamp AS interval_start, people_count AS average_count
+      `SELECT timestamp, people_count AS average_count
        FROM occupancy_log
        WHERE timestamp >= $1::timestamp AND timestamp < $2::timestamp
        ORDER BY timestamp
-       LIMIT 500`, // Add limit to prevent huge result sets
+       LIMIT 500`,
       [startDate, endDate]
     );
     console.log(
@@ -149,7 +149,7 @@ async function getOccupancyData(startDate, endDate) {
 
     const processStartTime = Date.now();
     const data = result.rows.map((r) => ({
-      interval_start: toPragueTimestamp(r.interval_start),
+      interval_start: toPragueTimestamp(r.timestamp),
       average_count: r.average_count,
     }));
     console.log(`[DB] Processing for getOccupancyData took ${Date.now() - processStartTime}ms`);

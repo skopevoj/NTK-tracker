@@ -11,14 +11,18 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function DataView() {
   const MIN_DATE = "2025-05-01";
-  const TODAY = new Date().toISOString().split("T")[0];
+  // Use Prague timezone for consistent date handling
+  const TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Prague" });
   const clampToRange = (d) => {
     if (!d) return TODAY;
     if (d < MIN_DATE) return MIN_DATE;
     if (d > TODAY) return TODAY;
     return d;
   };
-  const [selectedDate, setSelectedDate] = useState(clampToRange(new Date().toISOString().split("T")[0]));
+  // Initialize with Prague timezone date
+  const [selectedDate, setSelectedDate] = useState(
+    clampToRange(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Prague" }))
+  );
   const [data, setData] = useState(null);
   const [highest, setHighest] = useState({ people_count: 0, timestamp: null });
   const [current, setCurrent] = useState({ people_count: 0, timestamp: null });

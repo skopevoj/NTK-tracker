@@ -80,7 +80,9 @@ function setupPredictRoute(router) {
         }
       }
 
-      const todayUTC = new Date(date.toISOString().split("T")[0] + "T00:00:00Z");
+      // Simplified UTC date range calculation
+      const dateString = date.toISOString().split("T")[0]; // Get YYYY-MM-DD
+      const todayUTC = new Date(dateString + "T00:00:00Z");
       const tomorrowUTC = new Date(todayUTC);
       tomorrowUTC.setDate(tomorrowUTC.getDate() + 1);
 
@@ -97,7 +99,7 @@ function setupPredictRoute(router) {
 
       // Helper to get Prague hour/minute and round to previous 15-min slot
       const roundToPrevious15Prague = (date) => {
-        // produce Prague "YYYY-MM-DD HH:MM:SS"
+        // Use Prague timezone consistently
         const pragueStr = new Date(date).toLocaleString("sv-SE", { timeZone: "Europe/Prague" });
         const [datePart, timePart] = pragueStr.split(" ");
         const [hourStr, minuteStr] = timePart.split(":");
@@ -112,13 +114,18 @@ function setupPredictRoute(router) {
 
       const liveDataStartTime = Date.now();
       try {
-        const live = await currentOccupancy(); // uses DB function (now returns Prague-local timestamp string)
+        const live = await currentOccupancy();
         console.log(`[PREDICT] Live data fetched in ${Date.now() - liveDataStartTime}ms`);
         if (live && live.timestamp && typeof live.people_count === "number") {
-          // live.timestamp is Prague-local "YYYY-MM-DDTHH:MM:SS"
-          const liveDate = new Date(live.timestamp.replace("T", " ")); // parse into Date; this is local-like string but we only extract Prague-local parts below
-          lastDataPointTime = roundToPrevious15Prague(liveDate);
-          lastDataPointValue = live.people_count;
+          // live.timestamp is already Prague-local "YYYY-MM-DDTHH:MM:SS"
+          const timeMatch = live.timestamp.match(/(\d{2}):(\d{2})/);
+          if (timeMatch) {
+            const hour = parseInt(timeMatch[1], 10);
+            const minute = parseInt(timeMatch[2], 10);
+            const rounded = Math.floor(minute / 15) * 15;
+            lastDataPointTime = `${hour.toString().padStart(2, "0")}:${rounded.toString().padStart(2, "0")}`;
+            lastDataPointValue = live.people_count;
+          }
         }
       } catch (e) {
         console.log(`[PREDICT] Live data fetch failed in ${Date.now() - liveDataStartTime}ms:`, e.message);
