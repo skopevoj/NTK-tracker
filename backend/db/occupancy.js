@@ -162,6 +162,28 @@ async function getDailyAverages(lastDays = 365) {
   }
 }
 
+async function getWeeklyAverages() {
+  try {
+    const result = await db.query(
+      `SELECT 
+         EXTRACT(DOW FROM (timestamp AT TIME ZONE 'Europe/Prague')) AS dayOfWeek,
+         ROUND(AVG(people_count), 2) AS average
+       FROM occupancy_log
+       WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '4 weeks'
+       GROUP BY EXTRACT(DOW FROM (timestamp AT TIME ZONE 'Europe/Prague'))
+       ORDER BY dayOfWeek`,
+      []
+    );
+    return result.rows.map((row) => ({
+      dayOfWeek: parseInt(row.dayofweek, 10),
+      average: parseFloat(row.average),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch weekly averages:", error.message);
+    return [];
+  }
+}
+
 // Schedule cache invalidation at midnight daily
 cron.schedule("0 0 * * *", () => {
   dailyAveragesCache.clear();
@@ -176,4 +198,5 @@ module.exports = {
   highestOccupancy,
   getOccupancyByDayOfWeek,
   getDailyAverages,
+  getWeeklyAverages,
 };

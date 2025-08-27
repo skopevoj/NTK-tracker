@@ -1,4 +1,4 @@
-const { getOccupancyHistory, highestOccupancy, currentOccupancy, getDailyAverages } = require("../db/occupancy");
+const { getOccupancyHistory, highestOccupancy, currentOccupancy, getDailyAverages, getWeeklyAverages } = require("../db/occupancy");
 
 const rootValue = {
   occupancyHistory: async ({ limit }) => await getOccupancyHistory(limit || 50),
@@ -7,6 +7,7 @@ const rootValue = {
   highestOccupancy: async () => await highestOccupancy(),
   currentOccupancy: async () => await currentOccupancy(),
   dailyAverages: async ({ lastDays }) => await getDailyAverages(lastDays || 365),
+  weeklyAverages: async () => await getWeeklyAverages(),
 };
 
 module.exports = rootValue;

@@ -12,11 +12,17 @@ const schema = buildSchema(`
     average: Float
   }
 
+  type WeeklyAverage {
+    dayOfWeek: Int
+    average: Float
+  }
+
   type Query {
     occupancyHistory(limit: Int): [Occupancy]
     highestOccupancy: Occupancy
     currentOccupancy: Occupancy
     dailyAverages(lastDays: Int): [DailyAverage]
+    weeklyAverages: [WeeklyAverage]
   }
 `);
 
