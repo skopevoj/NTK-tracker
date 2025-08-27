@@ -77,7 +77,7 @@ export default function ActivityHeatmap() {
       date: dateStr,
       average: dataMap[dateStr] || 0,
       dayOfWeek: d.getDay(),
-      hasData: dataMap.hasOwnProperty(dateStr),
+      hasData: Object.prototype.hasOwnProperty.call(dataMap, dateStr),
     });
   }
 

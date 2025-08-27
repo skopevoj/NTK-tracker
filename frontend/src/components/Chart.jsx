@@ -54,6 +54,144 @@ export default function Chart({ data, formatTimestamp }) {
     return hour * 60;
   });
 
+  // Custom dot component to handle prediction vs actual styling
+  const CustomDot = (props) => {
+    const { cx, cy, payload } = props;
+    if (!payload || payload.people_count === null) return null;
+
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={0} // Hidden by default, only show on hover
+        fill="var(--accent)"
+        stroke="white"
+        strokeWidth={2}
+      />
+    );
+  };
+
+  // Custom active dot for hover state
+  const CustomActiveDot = (props) => {
+    const { cx, cy, payload } = props;
+    if (!payload || payload.people_count === null) return null;
+
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={5}
+        fill="var(--accent)"
+        stroke="white"
+        strokeWidth={2}
+        filter="drop-shadow(0 0 6px var(--accent))"
+      />
+    );
+  };
+
+  // Split data into segments for different styling
+  const processDataForRendering = () => {
+    const segments = [];
+    let currentSegment = [];
+    let currentType = null;
+
+    chartData.forEach((point, index) => {
+      if (point.people_count === null) {
+        // Skip null points but end current segment
+        if (currentSegment.length > 0) {
+          segments.push({ type: currentType, data: currentSegment });
+          currentSegment = [];
+          currentType = null;
+        }
+        return;
+      }
+
+      const pointType = point.is_prediction ? "prediction" : "actual";
+
+      if (currentType !== pointType) {
+        // Type changed, save current segment and start new one
+        if (currentSegment.length > 0) {
+          segments.push({ type: currentType, data: currentSegment });
+        }
+        currentSegment = [point];
+        currentType = pointType;
+      } else {
+        currentSegment.push(point);
+      }
+    });
+
+    // Don't forget the last segment
+    if (currentSegment.length > 0) {
+      segments.push({ type: currentType, data: currentSegment });
+    }
+
+    return segments;
+  };
+
+  const dataSegments = processDataForRendering();
+
+  // Custom tooltip component to prevent flickering
+  const CustomTooltip = ({ active, payload, label, coordinate }) => {
+    if (!active || !payload || payload.length === 0) {
+      return null;
+    }
+
+    // Instead of using payload from lines, get data directly from chartData using label (x value)
+    const dataPoint = chartData.find((point) => point.x === label);
+
+    if (!dataPoint || dataPoint.people_count === null || dataPoint.people_count === undefined) {
+      return null;
+    }
+
+    const value = dataPoint.people_count;
+    const isPrediction = dataPoint.is_prediction;
+
+    // Format the label (time)
+    const h = Math.floor(label / 60);
+    const m = label % 60;
+    const timeLabel = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+
+    return (
+      <div
+        style={{
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-md)",
+          color: "var(--text-primary)",
+          boxShadow: "var(--shadow-xl)",
+          padding: "8px 12px",
+          fontSize: "14px",
+        }}
+      >
+        <div style={{ marginBottom: "4px", fontWeight: "500" }}>{timeLabel}</div>
+        <div
+          style={{
+            color: isPrediction ? "var(--text-secondary)" : "var(--accent)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <div
+            style={{
+              width: "8px",
+              height: "2px",
+              background: "var(--accent)",
+              borderRadius: "1px",
+              ...(isPrediction && {
+                backgroundImage:
+                  "repeating-linear-gradient(to right, var(--accent) 0px, var(--accent) 4px, transparent 4px, transparent 6px)",
+              }),
+            }}
+          />
+          <span>
+            {value} {isPrediction ? "predicted" : "actual"}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const solidData = chartData.map((item) => (item.is_prediction ? { ...item, people_count: null } : item));
   const dashedData = chartData.map((item) => (!item.is_prediction ? { ...item, people_count: null } : item));
 
@@ -86,20 +224,14 @@ export default function Chart({ data, formatTimestamp }) {
               tickLine={false}
             />
             <Tooltip
-              formatter={(value) => [`${value}`, "people"]}
-              labelFormatter={(value) => {
-                const h = Math.floor(value / 60);
-                const m = value % 60;
-                return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-              }}
-              contentStyle={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                color: "var(--text-primary)",
-                boxShadow: "var(--shadow-xl)",
-              }}
+              content={<CustomTooltip />}
+              cursor={{ stroke: "var(--accent)", strokeWidth: 1, strokeDasharray: "4 4", opacity: 0.5 }}
+              animationDuration={0}
+              isAnimationActive={false}
+              animationBegin={0}
+              animationEasing="ease"
             />
+            {/* Solid line for actual data */}
             <Line
               type="monotone"
               dataKey="people_count"
@@ -111,7 +243,9 @@ export default function Chart({ data, formatTimestamp }) {
               strokeLinecap="round"
               isAnimationActive={false}
               data={solidData}
+              name="actual"
             />
+            {/* Dashed line for predictions */}
             <Line
               type="monotone"
               dataKey="people_count"
@@ -124,7 +258,8 @@ export default function Chart({ data, formatTimestamp }) {
               isAnimationActive={false}
               data={dashedData}
               strokeDasharray="8 4"
-              opacity={0.7}
+              opacity={0.8}
+              name="prediction"
             />
           </LineChart>
         </ResponsiveContainer>
