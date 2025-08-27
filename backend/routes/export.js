@@ -4,9 +4,11 @@ const db = require("../db/client");
 function setupExportRoute(router) {
   router.get("/export", async (req, res) => {
     const startTime = Date.now();
+    const clientIp = req.ip;
+    const userAgent = req.get("User-Agent") || "Unknown";
 
     try {
-      console.log("Starting database export...");
+      console.log(`[EXPORT] Starting database export for IP: ${clientIp}, User-Agent: ${userAgent}`);
 
       // Get all occupancy data
       const result = await db.query(`
@@ -25,6 +27,8 @@ function setupExportRoute(router) {
           totalRecords: result.rows.length,
           exportDurationMs: Date.now() - startTime,
           timezone: "Europe/Prague",
+          requestedBy: clientIp,
+          exportId: `export_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         },
         data: result.rows.map((row) => ({
           id: row.id,
@@ -34,7 +38,11 @@ function setupExportRoute(router) {
         })),
       };
 
-      console.log(`Database export completed in ${Date.now() - startTime}ms - ${result.rows.length} records`);
+      console.log(
+        `[EXPORT] Database export completed in ${Date.now() - startTime}ms - ${
+          result.rows.length
+        } records for IP: ${clientIp}`
+      );
 
       // Set appropriate headers for JSON download
       res.setHeader("Content-Type", "application/json");
@@ -45,7 +53,7 @@ function setupExportRoute(router) {
 
       res.json(exportData);
     } catch (error) {
-      console.error("Export failed:", error.message);
+      console.error(`[EXPORT] Export failed for IP: ${clientIp}:`, error.message);
       res.status(500).json({
         error: "Export failed",
         message: error.message,
