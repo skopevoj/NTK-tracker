@@ -64,6 +64,7 @@ export default function WeeklyStats() {
                 color: "var(--text-primary)",
                 boxShadow: "var(--shadow-xl)",
               }}
+              cursor={{ fill: "transparent", border: "none" }}
             />
             <Bar dataKey="average" fill="var(--accent)" radius={[4, 4, 0, 0]} />
           </BarChart>

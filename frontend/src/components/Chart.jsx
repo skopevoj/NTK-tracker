@@ -92,49 +92,8 @@ export default function Chart({ data, formatTimestamp }) {
     );
   };
 
-  // Split data into segments for different styling
-  const processDataForRendering = () => {
-    const segments = [];
-    let currentSegment = [];
-    let currentType = null;
-
-    chartData.forEach((point, index) => {
-      if (point.people_count === null) {
-        // Skip null points but end current segment
-        if (currentSegment.length > 0) {
-          segments.push({ type: currentType, data: currentSegment });
-          currentSegment = [];
-          currentType = null;
-        }
-        return;
-      }
-
-      const pointType = point.is_prediction ? "prediction" : "actual";
-
-      if (currentType !== pointType) {
-        // Type changed, save current segment and start new one
-        if (currentSegment.length > 0) {
-          segments.push({ type: currentType, data: currentSegment });
-        }
-        currentSegment = [point];
-        currentType = pointType;
-      } else {
-        currentSegment.push(point);
-      }
-    });
-
-    // Don't forget the last segment
-    if (currentSegment.length > 0) {
-      segments.push({ type: currentType, data: currentSegment });
-    }
-
-    return segments;
-  };
-
-  const dataSegments = processDataForRendering();
-
   // Custom tooltip component to prevent flickering
-  const CustomTooltip = ({ active, payload, label, coordinate }) => {
+  const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || payload.length === 0) {
       return null;
     }
@@ -204,7 +163,8 @@ export default function Chart({ data, formatTimestamp }) {
         <div className="loading">No chart data available</div>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+          {/* Reduced left margin so the chart is better centered on narrow/mobile screens */}
+          <LineChart data={chartData} margin={{ top: 12, right: 10, bottom: 12, left: 0 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="var(--border)" opacity={0.5} />
             <XAxis
               dataKey="x"

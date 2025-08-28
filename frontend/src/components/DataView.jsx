@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import DateSelector from "./DateSelector";
 import Chart from "./Chart";
 import ActivityHeatmap from "./ActivityHeatmap";
 import WeeklyStats from "./WeeklyStats";
@@ -30,6 +29,44 @@ export default function DataView() {
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState(null);
   const loadingTimeoutRef = useRef(null);
+
+  // --- Inline date controls handlers (prev / next / date change / today) ---
+  const parseYMD = (ymd) => {
+    if (!ymd) return null;
+    const p = ymd.split("-").map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  };
+
+  const formatYMD = (d) => {
+    if (!d) return "";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const prevDay = () => {
+    const d = parseYMD(selectedDate);
+    if (!d) return;
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(clampToRange(formatYMD(d)));
+  };
+
+  const nextDay = () => {
+    const d = parseYMD(selectedDate);
+    if (!d) return;
+    d.setDate(d.getDate() + 1);
+    setSelectedDate(clampToRange(formatYMD(d)));
+  };
+
+  const onDateChange = (e) => {
+    setSelectedDate(clampToRange(e.target.value));
+  };
+
+  const goToday = () => {
+    setSelectedDate(clampToRange(TODAY));
+  };
+  // --- end handlers ---
 
   // Cache utility functions
   const getCachedData = (key) => {
@@ -223,27 +260,107 @@ export default function DataView() {
 
       {/* Main Chart */}
       <div className="glass-card">
-        <div style={{ position: "relative" }}>
-          <h2 className="chart-title">
-            Daily Occupancy - {new Date(selectedDate + "T00:00:00").toLocaleDateString("cs-CZ")}
-          </h2>
-          {chartLoading && (
-            <div
-              style={{
-                position: "absolute",
-                top: "0.5rem",
-                right: "1rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                color: "var(--text-muted)",
-                fontSize: "0.875rem",
-              }}
+        <div className="flex items-center justify-center sm:justify-between gap-4 flex-wrap">
+          <div style={{ minWidth: 0 }}>
+            <h2
+              className="chart-title"
+              style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
             >
-              <div className="loading-spinner"></div>
-              Updating...
+              Daily Occupancy - {new Date(selectedDate + "T00:00:00").toLocaleDateString("cs-CZ")}
+            </h2>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            {/* Responsive inline date controls:
+                - prev / date / next stay inline and centered on phones
+                - Today button sits below as full width on phones and inline on wider screens */}
+            <div className="w-full">
+              <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-end w-full">
+                <div className="flex items-center justify-center gap-2 w-full sm:w-auto relative">
+                  {chartLoading && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        right: "-0.25rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        color: "var(--text-muted)",
+                        fontSize: "0.875rem",
+                        whiteSpace: "nowrap",
+                        pointerEvents: "none",
+                      }}
+                      aria-hidden={!chartLoading}
+                    >
+                      {/* only the spinner, no visible text */}
+                      <div
+                        className="loading-spinner"
+                        style={{ width: "14px", height: "14px" }}
+                        role="status"
+                        aria-label="Loading"
+                      />
+                    </div>
+                  )}
+
+                  {/* Prev / date / Next (inline) */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      aria-label="Previous day"
+                      onClick={prevDay}
+                      className="px-3 py-2 rounded-lg border border-transparent hover:border var(--border)"
+                      style={{ background: "transparent" }}
+                      title="Previous day"
+                    >
+                      ‹
+                    </button>
+
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={onDateChange}
+                      className="rounded-lg px-3 py-2 bg-transparent border border-gray-700 text-sm w-40 max-w-full"
+                      aria-label="Select date"
+                    />
+
+                    <button
+                      aria-label="Next day"
+                      onClick={nextDay}
+                      className="px-3 py-2 rounded-lg border border-transparent hover:border var(--border)"
+                      style={{ background: "transparent" }}
+                      title="Next day"
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+
+                {/* Today button: full width on small screens, auto on larger */}
+                <div className="w-full sm:w-auto mt-3 sm:mt-0 sm:ml-3">
+                  <button
+                    onClick={goToday}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg"
+                    style={{
+                      background: "var(--accent)",
+                      color: "white",
+                      fontWeight: 600,
+                      boxShadow: `
+                        6px 8px 18px rgba(6, 182, 212, 0.11),
+                        -4px -4px 10px rgba(255, 255, 255, 0.02),
+                        inset 1px 1px 2px rgba(0, 0, 0, 0.35),
+                        inset -1px -1px 2px rgba(255, 255, 255, 0.015)
+                      `,
+                      transition: "box-shadow 220ms",
+                    }}
+                    aria-label="Go to today"
+                  >
+                    Today
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </div>
         <div className="chart-container">
           {data && data.length > 0 ? (
@@ -256,7 +373,6 @@ export default function DataView() {
             <div className="loading">No data available for the selected day</div>
           )}
         </div>
-        <DateSelector selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
       </div>
 
       {/* Activity Overview */}
