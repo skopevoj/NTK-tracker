@@ -157,6 +157,16 @@ export default function Chart({ data, formatTimestamp }) {
   const solidData = chartData.map((item) => (item.is_prediction ? { ...item, people_count: null } : item));
   const dashedData = chartData.map((item) => (!item.is_prediction ? { ...item, people_count: null } : item));
 
+  // Ensure dashed prediction line starts exactly at the last actual point to avoid a visible gap
+  const firstPredIndex = chartData.findIndex((p) => p.is_prediction);
+  if (firstPredIndex > 0) {
+    const prev = chartData[firstPredIndex - 1];
+    // if the previous point is actual and has a value, copy it into the dashed series so the dashed line begins there
+    if (prev && prev.people_count !== null && dashedData[firstPredIndex - 1]) {
+      dashedData[firstPredIndex - 1] = { ...dashedData[firstPredIndex - 1], people_count: prev.people_count };
+    }
+  }
+
   return (
     <div style={{ width: "100%", height: 320 }}>
       {chartData.length === 0 ? (
